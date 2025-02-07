@@ -1,6 +1,10 @@
 {
   "name": "foliage3",
   "type": "module",
+  "scripts": {
+    "build.spago": "spago build",
+    "build": "bun run build.spago"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
