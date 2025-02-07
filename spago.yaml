@@ -1,0 +1,28 @@
+package:
+  name: foliage3
+  dependencies:
+    - aff-promise
+    - argonaut
+    - argonaut-generic
+    - arrays
+    - console
+    - effect
+    - fetch
+    - halogen
+    - js-uri
+    - lists
+    - maybe
+    - node-child-process
+    - node-fs
+    - node-process
+    - prelude
+    - profunctor-lenses
+    - transformers
+    - web-url
+  test:
+    main: Test.Main
+    dependencies: []
+workspace:
+  packageSet:
+    registry: 63.0.3
+  extraPackages: {}

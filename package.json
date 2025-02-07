@@ -1,0 +1,14 @@
+{
+  "name": "foliage3",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "purescript": "^0.15.16-4",
+    "spago": "^0.93.42"
+  }
+}
