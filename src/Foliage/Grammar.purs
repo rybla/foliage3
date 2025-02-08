@@ -37,6 +37,7 @@ instance Ord Comp where
 
 data Term
   = UnitTerm
+  | NatTerm Name
   | VarTerm Name
 
 derive instance Generic Term _
@@ -63,7 +64,9 @@ instance Eq Typ where
 instance Ord Typ where
   compare x y = genericCompare x y
 
-data Lat = UnitLat
+data Lat
+  = UnitLat
+  | NatLat
 
 derive instance Generic Lat _
 

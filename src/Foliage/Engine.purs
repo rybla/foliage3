@@ -99,7 +99,9 @@ unify (Prop _ p) (Prop _ q) = unify_Term p q
 
 unify_Term :: forall m. MonadEffect m => Term -> Term -> M m (Maybe Subst)
 unify_Term UnitTerm UnitTerm = pure $ pure Map.empty
-unify_Term UnitTerm _ = pure $ none
+unify_Term UnitTerm _ = pure none
+unify_Term (NatTerm m) (NatTerm n) | m == n = pure $ pure Map.empty
+unify_Term (NatTerm _) _ = pure none
 unify_Term (VarTerm x) q = pure $ pure $ Map.singleton x q
 
 -- unify_Term p q = todo $ "unify " <> show p <> " " <> show q
