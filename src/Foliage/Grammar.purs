@@ -35,7 +35,9 @@ instance Eq Comp where
 instance Ord Comp where
   compare x y = genericCompare x y
 
-data Term = UnitTerm
+data Term
+  = UnitTerm
+  | VarTerm Name
 
 derive instance Generic Term _
 

@@ -3,10 +3,11 @@ module Foliage.Engine where
 import Foliage.Grammar
 import Prelude
 
-import Control.Monad.Trans.Class (lift)
 import Control.Monad.Except (ExceptT)
 import Control.Monad.Reader (ReaderT, ask)
 import Control.Monad.State (StateT, get, modify_)
+import Control.Monad.Trans.Class (lift)
+import Control.Plus (empty)
 import Data.Foldable (foldM)
 import Data.List (List(..), (:))
 import Data.Map (Map)
@@ -94,7 +95,14 @@ insertProp p = flip foldM (true /\ none) \(new /\ props) q ->
 
 -- unify p q = Just σ  <==>  σ p = q
 unify :: forall m. MonadEffect m => Prop -> Prop -> M m (Maybe Subst)
-unify _ _ = todo "unify"
+unify (Prop _ p) (Prop _ q) = unify_Term p q
+
+unify_Term :: forall m. MonadEffect m => Term -> Term -> M m (Maybe Subst)
+unify_Term UnitTerm UnitTerm = pure $ pure Map.empty
+unify_Term UnitTerm _ = pure $ none
+unify_Term (VarTerm x) q = pure $ pure $ Map.singleton x q
+
+-- unify_Term p q = todo $ "unify " <> show p <> " " <> show q
 
 --------------------------------------------------------------------------------
 -- Subst
