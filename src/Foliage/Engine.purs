@@ -4,15 +4,16 @@ import Foliage.Grammar
 import Prelude
 
 import Control.Monad.Except (ExceptT)
-import Control.Monad.Reader (ReaderT, ask)
+import Control.Monad.Reader (ReaderT, ask, asks, runReaderT)
 import Control.Monad.State (StateT, get, modify_)
 import Control.Monad.Trans.Class (lift)
-import Control.Plus (empty)
 import Data.Foldable (foldM)
+import Data.Identity (Identity)
 import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Newtype (unwrap)
 import Data.Traversable (fold, traverse)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Unfoldable (none)
@@ -67,7 +68,12 @@ applyRule props (Rule rule) = case rule.hyps of
     map fold $ props # traverse \prop ->
       unify hyp prop >>= case _ of
         Nothing -> pure none
-        Just sigma -> applyRule props $ applySubst_Rule sigma $ Rule rule { hyps = hyps }
+        Just sigma ->
+          Rule rule { hyps = hyps }
+            # subst_Rule
+            # flip runReaderT { sigma }
+            # (unwrap :: Identity _ -> _)
+            # applyRule props
   Cons (CompHyp _x _c) hyps -> do
     -- TODO: run `c` and store result in x
     applyRule props $ Rule rule { hyps = hyps }
@@ -104,23 +110,44 @@ unify_Term (NatTerm m) (NatTerm n) | m == n = pure $ pure Map.empty
 unify_Term (NatTerm _) _ = pure none
 unify_Term (VarTerm x) q = pure $ pure $ Map.singleton x q
 
--- unify_Term p q = todo $ "unify " <> show p <> " " <> show q
-
 --------------------------------------------------------------------------------
 -- Subst
 --------------------------------------------------------------------------------
 
 type Subst = Map Name Term
 
-applySubst_Prop :: Subst -> Prop -> Prop
-applySubst_Prop _ _ = todo "applySubst_Prop"
+type SubstM m = ReaderT { sigma :: Subst } m :: Type -> Type
 
-applySubst_Rule :: Subst -> Rule -> Rule
-applySubst_Rule _ _ = todo "applySubst_Rule"
+subst_Rule :: forall m. MonadEffect m => Rule -> SubstM m Rule
+subst_Rule (Rule rule) = do
+  hyps <- rule.hyps # traverse subst_Hyp
+  prop <- rule.prop # subst_Prop
+  pure $ Rule { hyps, prop }
+
+subst_Hyp :: forall m. MonadEffect m => Hyp -> SubstM m Hyp
+subst_Hyp (PropHyp prop) = PropHyp <$> (prop # subst_Prop)
+subst_Hyp (CompHyp x comp) = CompHyp x <$> (comp # subst_Comp)
+subst_Hyp (CondHyp a) = CondHyp <$> (a # subst_Term)
+
+subst_Prop :: forall m. MonadEffect m => Prop -> SubstM m Prop
+subst_Prop (Prop r a) = Prop r <$> subst_Term a
+
+subst_Comp :: forall m. MonadEffect m => Comp -> SubstM m Comp
+subst_Comp (Invoke x args) = Invoke x <$> (args # traverse subst_Term)
+
+subst_Term :: forall m. MonadEffect m => Term -> SubstM m Term
+subst_Term UnitTerm = pure $ UnitTerm
+subst_Term (NatTerm n) = pure $ NatTerm n
+subst_Term a@(VarTerm x) = do
+  { sigma } <- ask
+  pure $ sigma # Map.lookup x # fromMaybe a
 
 --------------------------------------------------------------------------------
 -- utilities
 --------------------------------------------------------------------------------
 
-subsumes :: Prop -> Prop -> Boolean
-subsumes _ _ = todo "subsumes"
+type SubsumesM m = ReaderT {} m
+
+subsumes :: forall m. MonadEffect m => Prop -> Prop -> SubsumesM m Boolean
+subsumes (Prop r1 p1) (Prop r2 p2) = todo "subsumes"
+
