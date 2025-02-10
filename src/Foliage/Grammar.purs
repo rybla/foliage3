@@ -37,7 +37,7 @@ instance Ord Comp where
 
 data Term
   = UnitTerm
-  | NatTerm Name
+  | NatTerm Int
   | VarTerm Name
 
 derive instance Generic Term _
@@ -67,6 +67,8 @@ instance Ord Typ where
 data Lat
   = UnitLat
   | NatLat
+  | DiscreteLat Lat -- everything is either equal or incomparable
+  | OppositeLat Lat -- turn lattice upside-down
 
 derive instance Generic Lat _
 
@@ -79,9 +81,7 @@ instance Eq Lat where
 instance Ord Lat where
   compare x y = genericCompare x y
 
-data Rel
-  = NamedRel Name
-  | LatRel Lat
+data Rel = Rel Name
 
 derive instance Generic Rel _
 

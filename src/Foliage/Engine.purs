@@ -3,17 +3,17 @@ module Foliage.Engine where
 import Foliage.Grammar
 import Prelude
 
-import Control.Monad.Except (ExceptT)
-import Control.Monad.Reader (ReaderT, ask, asks, runReaderT)
+import Control.Monad.Except (ExceptT, throwError)
+import Control.Monad.Reader (ReaderT, ask, runReaderT)
 import Control.Monad.State (StateT, get, modify_)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Writer (WriterT, runWriterT, tell)
 import Data.Foldable (foldM)
-import Data.Identity (Identity)
 import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (unwrap)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Ordering (invert)
 import Data.Traversable (fold, traverse)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Unfoldable (none)
@@ -25,10 +25,10 @@ import Foliage.Utility (todo)
 -- types
 --------------------------------------------------------------------------------
 
-type M m = ExceptT Error (ReaderT (Ctx m) (StateT Env m))
+type M m = (ReaderT (Ctx m) (StateT Env (ExceptT Error m)))
 
 type Ctx m =
-  { relations :: Map Name Rel
+  { relLats :: Map Name Lat
   , rules :: Map Name Rule
   , trace :: String -> m Unit
   }
@@ -37,7 +37,7 @@ type Env =
   { props :: List Prop
   }
 
-data Error = Error String
+type Error = Array String
 
 trace :: forall m. MonadEffect m => String -> M m Unit
 trace msg = do
@@ -53,47 +53,54 @@ loop = do
   ctx <- ask
   env <- get
   new_props :: List Prop <- map fold do
-    ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(rule_name /\ Rule rule) -> do
-      applyRule env.props (Rule rule)
+    ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(_rule_name /\ Rule rule) -> do
+      Rule rule
+        # applyRule
+        # flip runReaderT env.props
   new /\ props' :: Boolean /\ List Prop <- new_props # flip foldM (true /\ none) \(new /\ props') p -> do
     new' /\ props'' <- insertProp p props'
     pure $ (new || new') /\ props''
   modify_ _ { props = props' }
   loop # when new
 
-applyRule :: forall m. MonadEffect m => List Prop -> Rule -> M m (List Prop)
-applyRule props (Rule rule) = case rule.hyps of
+applyRule :: forall m. MonadEffect m => Rule -> ReaderT (List Prop) (M m) (List Prop)
+applyRule (Rule rule) = case rule.hyps of
   Nil -> pure $ singleton rule.prop
-  Cons (PropHyp hyp) hyps ->
+  Cons (PropHyp hyp) hyps -> do
+    props <- ask
+    -- for each known `prop`
     map fold $ props # traverse \prop ->
-      unify hyp prop >>= case _ of
+      -- check if `prop` can satisfy `hyp`
+      unify hyp prop # lift >>= case _ of
         Nothing -> pure none
-        Just sigma ->
-          Rule rule { hyps = hyps }
-            # subst_Rule
-            # flip runReaderT { sigma }
-            # (unwrap :: Identity _ -> _)
-            # applyRule props
+        -- if it can, then update rest of the rule with resulting `sigma`,
+        -- then apply the rest of the rule
+        Just sigma -> do
+          rule' <-
+            Rule rule { hyps = hyps }
+              # subst_Rule
+              # flip runReaderT { sigma }
+              # lift
+          rule' # applyRule
   Cons (CompHyp _x _c) hyps -> do
     -- TODO: run `c` and store result in x
-    applyRule props $ Rule rule { hyps = hyps }
+    Rule rule { hyps = hyps } # applyRule
   Cons (CondHyp _a) hyps -> do
     -- TODO: evaluate `a`. if its truem, then continue
     -- TODO: if it has free vars, then its badly-scoped
-    applyRule props $ Rule rule { hyps = hyps }
+    Rule rule { hyps = hyps } # applyRule
 
 -- • if `p` is subsumed by something in `props`, then yields `props`
 -- • if `p` subsumes some props `props'` in `props`, then yields `p : props - props'`
 -- • otherwise, yields `p : props`
 -- TODO: implement more efficiently
-insertProp :: forall m. MonadEffect m => Prop -> List Prop -> m (Boolean /\ List Prop)
-insertProp p = flip foldM (true /\ none) \(new /\ props) q ->
-  if p `subsumes` q then
-    pure $ new /\ props
-  else if q `subsumes` p then
-    pure $ false /\ q : props
-  else
-    pure $ new /\ q : props
+insertProp :: forall m. MonadEffect m => Prop -> List Prop -> M m (Boolean /\ List Prop)
+insertProp p = flip foldM (true /\ none) \(new /\ props) q -> do
+  p `latCompare_Prop` q >>= case _ of
+    _ /\ Nothing -> pure $ new /\ (q : props)
+    _ /\ Just LT -> pure $ false /\ (q : props)
+    _ /\ Just EQ -> pure $ false /\ props
+    _ /\ Just GT -> pure $ new /\ props
 
 --------------------------------------------------------------------------------
 -- unify
@@ -116,7 +123,7 @@ unify_Term (VarTerm x) q = pure $ pure $ Map.singleton x q
 
 type Subst = Map Name Term
 
-type SubstM m = ReaderT { sigma :: Subst } m :: Type -> Type
+type SubstM m = ReaderT { sigma :: Subst } (M m) :: Type -> Type
 
 subst_Rule :: forall m. MonadEffect m => Rule -> SubstM m Rule
 subst_Rule (Rule rule) = do
@@ -143,11 +150,69 @@ subst_Term a@(VarTerm x) = do
   pure $ sigma # Map.lookup x # fromMaybe a
 
 --------------------------------------------------------------------------------
+-- latCompare
+--------------------------------------------------------------------------------
+
+type LatOrdering = Maybe Ordering
+
+type LatCompareM m = M m
+
+latCompare_Prop :: forall m. MonadEffect m => Prop -> Prop -> LatCompareM m (Subst /\ LatOrdering)
+latCompare_Prop (Prop r1 a1) (Prop r2 a2) = do
+  if r1 == r2 then
+    pure $ Map.empty /\ Nothing
+  else do
+    l <- fromRelGetLat r1
+    lo /\ sys <-
+      latCompare_Term l a1 a2
+        # runWriterT
+    sigma <- solveSystemForSubst sys
+    pure $ sigma /\ lo
+
+type LatCompareM' m = WriterT (List (Name /\ Term)) (M m)
+
+latCompare_Term :: forall m. MonadEffect m => Lat -> Term -> Term -> LatCompareM' m LatOrdering
+
+latCompare_Term _ (VarTerm x1) (VarTerm x2) = do
+  tell $ pure $ x1 /\ VarTerm x2
+  pure $ Just EQ
+latCompare_Term _ (VarTerm x1) a2 = do
+  tell $ pure $ x1 /\ a2
+  pure $ Just GT
+latCompare_Term _ a1 (VarTerm x2) = do
+  tell $ pure $ x2 /\ a1
+  pure $ Just LT
+
+latCompare_Term UnitLat _ _ =
+  pure $ Just EQ
+
+latCompare_Term NatLat (NatTerm n1) (NatTerm n2) =
+  pure $ Just $ compare n1 n2
+
+latCompare_Term (DiscreteLat l) a1 a2 =
+  latCompare_Term l a1 a2 >>= case _ of
+    Just EQ -> pure $ Just EQ
+    _ -> pure Nothing
+
+latCompare_Term (OppositeLat l) a1 a2 =
+  latCompare_Term l a1 a2 >>= case _ of
+    Nothing -> pure Nothing
+    Just o -> pure $ Just $ invert o
+
+latCompare_Term l a1 a2 = throwError [ "latCompare_Term", "terms are not compatible with lattice " <> show l <> ": " <> show a1 <> ", " <> show a2 ]
+
+--------------------------------------------------------------------------------
 -- utilities
 --------------------------------------------------------------------------------
 
-type SubsumesM m = ReaderT {} m
+-- solves system of assignments for a consistent substitution that satisfies them
+solveSystemForSubst :: forall m. MonadEffect m => List (Name /\ Term) -> M m Subst
+solveSystemForSubst = todo ""
 
-subsumes :: forall m. MonadEffect m => Prop -> Prop -> SubsumesM m Boolean
-subsumes (Prop r1 p1) (Prop r2 p2) = todo "subsumes"
+fromRelGetLat :: forall m. MonadEffect m => Rel -> M m Lat
+fromRelGetLat (Rel x) = do
+  { relLats } <- ask
+  relLats
+    # Map.lookup x
+    # maybe (throwError [ "fromRelGetLat", "unknown relation name: " <> show x ]) pure
 
