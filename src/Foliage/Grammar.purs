@@ -6,6 +6,8 @@ import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
 import Data.List (List)
 import Data.Ord.Generic (genericCompare)
+import Data.Set (Set)
+import Data.Set as Set
 import Data.Show.Generic (genericShow)
 
 data Name = Name String
@@ -139,3 +141,11 @@ instance Eq Rule where
 instance Ord Rule where
   compare x y = genericCompare x y
 
+--------------------------------------------------------------------------------
+-- utilities
+--------------------------------------------------------------------------------
+
+names_Term :: Term -> Set Name
+names_Term UnitTerm = mempty
+names_Term (NatTerm _) = mempty
+names_Term (VarTerm x) = Set.singleton x
