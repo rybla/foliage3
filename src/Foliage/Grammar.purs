@@ -10,6 +10,28 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 
+data Prog = Program (List Stmt)
+
+derive instance Generic Prog _
+
+instance Show Prog where
+  show x = genericShow x
+
+instance Eq Prog where
+  eq x y = genericEq x y
+
+data Stmt
+  = DefRelStmt Name Lat
+  | DefRuleStmt Name Rule
+
+derive instance Generic Stmt _
+
+instance Show Stmt where
+  show x = genericShow x
+
+instance Eq Stmt where
+  eq x y = genericEq x y
+
 data Name = Name String
 
 derive instance Generic Name _
