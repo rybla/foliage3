@@ -3,12 +3,13 @@ module Foliage.Engine where
 import Foliage.Grammar
 import Prelude
 
-import Control.Monad.Except (ExceptT, runExceptT, throwError)
+import Control.Alternative (empty)
+import Control.Monad.Except (ExceptT, throwError)
+import Control.Monad.Maybe.Trans (MaybeT, runMaybeT)
 import Control.Monad.Reader (ReaderT, ask, runReaderT)
 import Control.Monad.State (StateT, get, modify_)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (WriterT, runWriterT, tell)
-import Data.Either (Either(..))
 import Data.Foldable (foldM)
 import Data.List (List(..), (:))
 import Data.Map (Map)
@@ -17,10 +18,10 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Ordering (invert)
 import Data.Set as Set
 import Data.Traversable (fold, traverse)
+import Data.TraversableWithIndex (traverseWithIndex)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Unfoldable (none)
 import Data.Unfoldable1 (singleton)
-import Foliage.Utility (todo)
 
 --------------------------------------------------------------------------------
 -- types
@@ -55,9 +56,7 @@ loop = do
   env <- get
   new_props :: List Prop <- map fold do
     ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(_rule_name /\ Rule rule) -> do
-      Rule rule
-        # applyRule
-        # flip runReaderT env.props
+      Rule rule # applyRule # flip runReaderT env.props
   new /\ props' :: Boolean /\ List Prop <- new_props # flip foldM (true /\ none) \(new /\ props') p -> do
     new' /\ props'' <- insertProp p props'
     pure $ (new || new') /\ props''
@@ -112,9 +111,9 @@ unify :: forall m. Monad m => Prop -> Prop -> M m (Maybe Subst)
 unify (Prop _ p) (Prop _ q) = unify_Term p q
 
 unify_Term :: forall m. Monad m => Term -> Term -> M m (Maybe Subst)
-unify_Term UnitTerm UnitTerm = pure $ pure Map.empty
+unify_Term UnitTerm UnitTerm = pure $ pure empty
 unify_Term UnitTerm _ = pure none
-unify_Term (NatTerm m) (NatTerm n) | m == n = pure $ pure Map.empty
+unify_Term (NatTerm m) (NatTerm n) | m == n = pure $ pure empty
 unify_Term (NatTerm _) _ = pure none
 unify_Term (VarTerm x) q = pure $ pure $ Map.singleton x q
 
@@ -161,15 +160,13 @@ type LatCompareM m = M m
 latCompare_Prop :: forall m. Monad m => Prop -> Prop -> LatCompareM m (Subst /\ LatOrdering)
 latCompare_Prop (Prop r1 a1) (Prop r2 a2) = do
   if r1 == r2 then
-    pure $ Map.empty /\ Nothing
+    pure $ empty /\ Nothing
   else do
     l <- fromRelGetLat r1
-    lo /\ sys <-
-      latCompare_Term l a1 a2
-        # runWriterT
-    solveSysForSubst sys # runExceptT >>= case _ of
-      Left _ -> pure $ Map.empty /\ Nothing
-      Right sigma -> pure $ sigma /\ lo
+    lo /\ sys <- latCompare_Term l a1 a2 # runWriterT
+    solveSysForSubst sys # runMaybeT >>= case _ of
+      Nothing -> pure $ empty /\ Nothing
+      Just sigma -> pure $ sigma /\ lo
 
 type LatCompareM' m = WriterT (Sys) (M m)
 
@@ -210,24 +207,34 @@ latCompare_Term l a1 a2 = throwError [ "latCompare_Term", "terms are not compati
 type Sys = List (Name /\ Term)
 
 -- solves system of assignments for a consistent substitution that satisfies them
-solveSysForSubst :: forall m. Monad m => Sys -> ExceptT Unit (M m) Subst
-solveSysForSubst sys_ = go =<< initSys sys_
+solveSysForSubst :: forall m. Monad m => Sys -> MaybeT (M m) Subst
+solveSysForSubst = init empty >=> go
   where
-  initSys :: Sys -> _ Sys
-  initSys = todo ""
+  init :: Subst -> Sys -> _ Subst
+  init sigma Nil = pure sigma
+  init sigma ((x /\ a) : sys) = case sigma # Map.lookup x of
+    -- if assigning `x` to `a` doesn't conflict with any existing assignments, 
+    -- then just do it
+    Nothing -> init (sigma # Map.insert x a) sys
+    -- if assigning `x` to `a` conflicts with a previous assignment of `x` to `a'`,
+    -- then unify `a` and `a'`,
+    -- then append any resulting substitution from that to the rest of the system to be initialized
+    Just a' -> do
+      unify_Term a a' # lift >>= case _ of
+        Nothing -> empty
+        Just sigma' -> do
+          a'' <- a # subst_Term # flip runReaderT { sigma: sigma' } # lift
+          init (sigma # Map.insert x a'') (sys <> Map.toUnfoldable sigma')
 
-  go :: Sys -> _ Subst
-  go sys = do
-    sys' <- sys # traverse \(x /\ a) -> do
-      when (x `occursIn` a) $ throwError unit
-      pure $ x /\ applySys sys a
-    if sys /= sys' then
-      go sys'
+  go :: Subst -> _ Subst
+  go sigma = do
+    sigma' <- sigma # traverseWithIndex \x a -> do
+      when (x `occursIn` a) do empty
+      a # subst_Term # flip runReaderT { sigma } # lift
+    if sigma /= sigma' then
+      go sigma'
     else
-      pure $ Map.fromFoldable sys
-
-  applySys :: Sys -> Term -> Term
-  applySys sys a = todo ""
+      pure sigma
 
   occursIn x a = x `Set.member` names_Term a
 
