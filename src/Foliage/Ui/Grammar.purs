@@ -8,6 +8,7 @@ import Control.Monad.Writer (tell)
 import Data.Array as Array
 import Data.Foldable (fold, foldMap, null)
 import Data.List (List)
+import Data.List as List
 import Data.Maybe (Maybe, maybe)
 import Data.Traversable (sequence, traverse)
 import Data.Unfoldable (none)
@@ -46,26 +47,26 @@ renderStmt (DefRel x l) = do
           ] # sequence
         )
     ] # sequence
+  htmls_props <- ctx.props
+    # foldMap
+        ( \prop@(Prop (Rel x') _) ->
+            if x /= x' then []
+            else
+              prop # renderProp # map (\html -> HH.li [] [ html ]) # pure
+        )
+    # sequence
   body <-
-    if null ctx.props then
+    if null htmls_props then
       pure none
     else pure
       <$> HH.div
         [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ]
       <$>
         ( [ renderPunc "known instances:"
-          , HH.ul
-              [ css do tell [ "padding-left: 1em" ] ] <$>
-              ( ctx.props
-                  -- # foldMap (renderProp >>> map (\html -> HH.li [] [ html ]) >>> pure)
-                  # foldMap
-                      ( \prop@(Prop (Rel x') _) ->
-                          if x /= x' then []
-                          else
-                            prop # renderProp # map (\html -> HH.li [] [ html ]) # pure
-                      )
-                  # sequence
-              )
+          , pure $
+              HH.ul
+                [ css do tell [ "padding-left: 1em" ] ]
+                htmls_props
           ] # sequence
         )
   renderStmt_template { labels, body }
