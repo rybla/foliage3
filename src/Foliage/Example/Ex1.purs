@@ -9,15 +9,22 @@ prog :: Prog
 prog =
   Prog $ List.fromFoldable
     [ DefRel relP NatLat
-    , DefRule (Name "P(0)") $ Rule
+    , DefRule (Name "P1") $ Rule
         { hyps: List.fromFoldable []
         , prop: Prop (Rel relP) $ DataTerm (NatTerm 0)
         }
-    , DefRule (Name "P(0) => P(1)") $ Rule
+    , DefRule (Name "P2") $ Rule
         { hyps: List.fromFoldable
             [ PropHyp $ Prop (Rel relP) $ DataTerm (NatTerm 0) ]
         , prop: Prop (Rel relP) $ DataTerm (NatTerm 1)
         }
+    , DefRel relQ NatLat
+    , DefRule (Name "R1") $ Rule
+        { hyps: List.fromFoldable
+            [ PropHyp $ Prop (Rel relP) $ DataTerm (NatTerm 1) ]
+        , prop: Prop (Rel relQ) $ DataTerm (NatTerm 1)
+        }
     ]
   where
   relP = Name "P"
+  relQ = Name "Q"
