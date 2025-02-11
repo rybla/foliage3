@@ -63,8 +63,7 @@ instance Ord Comp where
   compare x y = genericCompare x y
 
 data Term
-  = UnitTerm
-  | NatTerm Int
+  = DataTerm DataTerm
   | VarTerm Name
 
 derive instance Generic Term _
@@ -78,7 +77,26 @@ instance Eq Term where
 instance Ord Term where
   compare x y = genericCompare x y
 
-data Typ = UnitTyp
+data DataTerm
+  = UnitTerm
+  | BoolTerm Boolean
+  | NatTerm Int
+
+derive instance Generic DataTerm _
+
+instance Show DataTerm where
+  show x = genericShow x
+
+instance Eq DataTerm where
+  eq x y = genericEq x y
+
+instance Ord DataTerm where
+  compare x y = genericCompare x y
+
+data Typ
+  = UnitTyp
+  | BoolType
+  | NatType
 
 derive instance Generic Typ _
 
@@ -93,6 +111,7 @@ instance Ord Typ where
 
 data Lat
   = UnitLat
+  | BoolLat
   | NatLat
   | DiscreteLat Lat -- everything is either equal or incomparable
   | OppositeLat Lat -- turn lattice upside-down
@@ -171,6 +190,7 @@ instance Ord Rule where
 --------------------------------------------------------------------------------
 
 names_Term :: Term -> Set Name
-names_Term UnitTerm = mempty
-names_Term (NatTerm _) = mempty
+names_Term (DataTerm (UnitTerm)) = mempty
+names_Term (DataTerm ((BoolTerm _))) = mempty
+names_Term (DataTerm ((NatTerm _))) = mempty
 names_Term (VarTerm x) = Set.singleton x

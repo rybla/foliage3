@@ -71,7 +71,7 @@ renderStmt :: forall m. Monad m => Stmt -> HTML m
 renderStmt (DefRel x l) =
   renderStmt_template
     { labels:
-        [ HH.div [] [ renderPunc "rel" ]
+        [ HH.div [] [ renderPunc "define relation" ]
         , HH.div [] [ renderLine $ fold $ [ [ renderName x, renderPunc "(" ], renderLat l, [ renderPunc ")" ] ] ]
         ]
     , body: none
@@ -79,7 +79,7 @@ renderStmt (DefRel x l) =
 renderStmt (DefRule x r) =
   renderStmt_template
     { labels:
-        [ HH.div [] [ renderPunc "rule" ]
+        [ HH.div [] [ renderPunc "define rule" ]
         , HH.div [] [ renderName x ]
         ]
     , body: pure $
@@ -109,7 +109,7 @@ renderRule (Rule rule) =
   HH.div
     [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ] $ fold
     [ rule.hyps # foldMap (renderHyp >>> pure)
-    , [ HH.hr [ css do tell [ "border: none", "height: 0.2em", "background-color: black" ] ] ]
+    , [ HH.div [ css do tell [ "height: 0.1em", "background-color: black" ] ] [] ]
     , [ renderProp rule.prop ]
     ]
 
@@ -133,13 +133,15 @@ renderRel (Rel x) = renderName x
 
 renderLat :: forall m. Monad m => Lat -> Array (HTML m)
 renderLat UnitLat = [ renderKeyword "Unit" ]
+renderLat BoolLat = [ renderKeyword "Bool" ]
 renderLat NatLat = [ renderKeyword "Nat" ]
 renderLat (DiscreteLat l) = [ renderKeyword "Discrete", renderPunc "(" ] <> renderLat l <> [ renderPunc ")" ]
 renderLat (OppositeLat l) = [ renderKeyword "Opposite", renderPunc "(" ] <> renderLat l <> [ renderPunc ")" ]
 
 renderTerm :: forall m. Monad m => Term -> HTML m
-renderTerm UnitTerm = renderKeyword "unit"
-renderTerm (NatTerm n) = renderKeyword (show n)
+renderTerm (DataTerm UnitTerm) = renderKeyword "unit"
+renderTerm (DataTerm (BoolTerm b)) = renderKeyword (show b)
+renderTerm (DataTerm (NatTerm n)) = renderKeyword (show n)
 renderTerm (VarTerm x) = renderName x
 
 renderName :: forall m. Monad m => Name -> HTML m

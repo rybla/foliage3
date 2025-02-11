@@ -357,6 +357,19 @@
   var showInt = {
     show: showIntImpl
   };
+  var showBoolean = {
+    show: function(v) {
+      if (v) {
+        return "true";
+      }
+      ;
+      if (!v) {
+        return "false";
+      }
+      ;
+      throw new Error("Failed pattern match at Data.Show (line 29, column 1 - line 31, column 23): " + [v.constructor.name]);
+    }
+  };
   var show = function(dict) {
     return dict.show;
   };
@@ -3507,32 +3520,15 @@
     };
     return Name2;
   }();
-  var UnitTerm = /* @__PURE__ */ function() {
-    function UnitTerm2() {
-    }
-    ;
-    UnitTerm2.value = new UnitTerm2();
-    return UnitTerm2;
-  }();
-  var NatTerm = /* @__PURE__ */ function() {
-    function NatTerm2(value0) {
+  var Rel = /* @__PURE__ */ function() {
+    function Rel2(value0) {
       this.value0 = value0;
     }
     ;
-    NatTerm2.create = function(value0) {
-      return new NatTerm2(value0);
+    Rel2.create = function(value0) {
+      return new Rel2(value0);
     };
-    return NatTerm2;
-  }();
-  var VarTerm = /* @__PURE__ */ function() {
-    function VarTerm2(value0) {
-      this.value0 = value0;
-    }
-    ;
-    VarTerm2.create = function(value0) {
-      return new VarTerm2(value0);
-    };
-    return VarTerm2;
+    return Rel2;
   }();
   var UnitLat = /* @__PURE__ */ function() {
     function UnitLat2() {
@@ -3540,6 +3536,13 @@
     ;
     UnitLat2.value = new UnitLat2();
     return UnitLat2;
+  }();
+  var BoolLat = /* @__PURE__ */ function() {
+    function BoolLat2() {
+    }
+    ;
+    BoolLat2.value = new BoolLat2();
+    return BoolLat2;
   }();
   var NatLat = /* @__PURE__ */ function() {
     function NatLat2() {
@@ -3567,6 +3570,79 @@
       return new OppositeLat2(value0);
     };
     return OppositeLat2;
+  }();
+  var UnitTerm = /* @__PURE__ */ function() {
+    function UnitTerm2() {
+    }
+    ;
+    UnitTerm2.value = new UnitTerm2();
+    return UnitTerm2;
+  }();
+  var BoolTerm = /* @__PURE__ */ function() {
+    function BoolTerm2(value0) {
+      this.value0 = value0;
+    }
+    ;
+    BoolTerm2.create = function(value0) {
+      return new BoolTerm2(value0);
+    };
+    return BoolTerm2;
+  }();
+  var NatTerm = /* @__PURE__ */ function() {
+    function NatTerm2(value0) {
+      this.value0 = value0;
+    }
+    ;
+    NatTerm2.create = function(value0) {
+      return new NatTerm2(value0);
+    };
+    return NatTerm2;
+  }();
+  var DataTerm = /* @__PURE__ */ function() {
+    function DataTerm2(value0) {
+      this.value0 = value0;
+    }
+    ;
+    DataTerm2.create = function(value0) {
+      return new DataTerm2(value0);
+    };
+    return DataTerm2;
+  }();
+  var VarTerm = /* @__PURE__ */ function() {
+    function VarTerm2(value0) {
+      this.value0 = value0;
+    }
+    ;
+    VarTerm2.create = function(value0) {
+      return new VarTerm2(value0);
+    };
+    return VarTerm2;
+  }();
+  var Prop = /* @__PURE__ */ function() {
+    function Prop2(value0, value1) {
+      this.value0 = value0;
+      this.value1 = value1;
+    }
+    ;
+    Prop2.create = function(value0) {
+      return function(value1) {
+        return new Prop2(value0, value1);
+      };
+    };
+    return Prop2;
+  }();
+  var Invoke = /* @__PURE__ */ function() {
+    function Invoke2(value0, value1) {
+      this.value0 = value0;
+      this.value1 = value1;
+    }
+    ;
+    Invoke2.create = function(value0) {
+      return function(value1) {
+        return new Invoke2(value0, value1);
+      };
+    };
+    return Invoke2;
   }();
   var PropHyp = /* @__PURE__ */ function() {
     function PropHyp2(value0) {
@@ -3600,6 +3676,16 @@
       return new CondHyp2(value0);
     };
     return CondHyp2;
+  }();
+  var Rule = /* @__PURE__ */ function() {
+    function Rule2(value0) {
+      this.value0 = value0;
+    }
+    ;
+    Rule2.create = function(value0) {
+      return new Rule2(value0);
+    };
+    return Rule2;
   }();
   var DefRel = /* @__PURE__ */ function() {
     function DefRel2(value0, value1) {
@@ -3642,8 +3728,14 @@
   };
 
   // output/Foliage.Example.Ex1/index.js
+  var fromFoldable2 = /* @__PURE__ */ fromFoldable(foldableArray);
   var prog = /* @__PURE__ */ function() {
-    return new Prog(fromFoldable(foldableArray)([new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value), new DefRel(new Name("test"), NatLat.value)]));
+    var ruleR1 = new Name("R1");
+    var relP = new Name("P");
+    return new Prog(fromFoldable2([new DefRel(relP, NatLat.value), new DefRule(ruleR1, new Rule({
+      hyps: fromFoldable2([new PropHyp(new Prop(new Rel(relP), new VarTerm(new Name("n")))), new CompHyp(new Name("b"), new Invoke(new Name("isNonezero"), [new VarTerm(new Name("n"))])), new CondHyp(new VarTerm(new Name("b")))]),
+      prop: new Prop(new Rel(relP), new DataTerm(new NatTerm(4)))
+    }))]));
   }();
 
   // output/Foliage.Ui.Common/index.js
@@ -6217,9 +6309,6 @@
   var element2 = /* @__PURE__ */ function() {
     return element(Nothing.value);
   }();
-  var hr = function(props) {
-    return element2("hr")(props)([]);
-  };
   var div2 = /* @__PURE__ */ element2("div");
 
   // output/Halogen.HTML/index.js
@@ -6306,7 +6395,8 @@
   var fold2 = /* @__PURE__ */ fold(foldableArray)(monoidArray);
   var none3 = /* @__PURE__ */ none(unfoldableArray);
   var append5 = /* @__PURE__ */ append(semigroupArray);
-  var show3 = /* @__PURE__ */ show(showInt);
+  var show3 = /* @__PURE__ */ show(showBoolean);
+  var show1 = /* @__PURE__ */ show(showInt);
   var map11 = /* @__PURE__ */ map(functorArray);
   var foldMap4 = /* @__PURE__ */ foldMap(foldableList)(monoidArray);
   var pure6 = /* @__PURE__ */ pure(applicativeArray);
@@ -6354,6 +6444,10 @@
         return [renderKeyword1("Unit")];
       }
       ;
+      if (v instanceof BoolLat) {
+        return [renderKeyword1("Bool")];
+      }
+      ;
       if (v instanceof NatLat) {
         return [renderKeyword1("Nat")];
       }
@@ -6366,19 +6460,23 @@
         return append5([renderKeyword1("Opposite"), renderPunc1("(")])(append5(renderLat(dictMonad)(v.value0))([renderPunc1(")")]));
       }
       ;
-      throw new Error("Failed pattern match at Foliage.Ui.Program (line 135, column 1 - line 135, column 56): " + [v.constructor.name]);
+      throw new Error("Failed pattern match at Foliage.Ui.Program (line 134, column 1 - line 134, column 56): " + [v.constructor.name]);
     };
   };
   var renderTerm = function(dictMonad) {
     var renderKeyword1 = renderKeyword(dictMonad);
     var renderName1 = renderName(dictMonad);
     return function(v) {
-      if (v instanceof UnitTerm) {
+      if (v instanceof DataTerm && v.value0 instanceof UnitTerm) {
         return renderKeyword1("unit");
       }
       ;
-      if (v instanceof NatTerm) {
-        return renderKeyword1(show3(v.value0));
+      if (v instanceof DataTerm && v.value0 instanceof BoolTerm) {
+        return renderKeyword1(show3(v.value0.value0));
+      }
+      ;
+      if (v instanceof DataTerm && v.value0 instanceof NatTerm) {
+        return renderKeyword1(show1(v.value0.value0));
       }
       ;
       if (v instanceof VarTerm) {
@@ -6426,16 +6524,16 @@
         return renderLine1([renderPunc1("if"), renderTerm1(v.value0)]);
       }
       ;
-      throw new Error("Failed pattern match at Foliage.Ui.Program (line 117, column 1 - line 117, column 48): " + [v.constructor.name]);
+      throw new Error("Failed pattern match at Foliage.Ui.Program (line 116, column 1 - line 116, column 48): " + [v.constructor.name]);
     };
   };
   var renderRule = function(dictMonad) {
     var renderHyp1 = renderHyp(dictMonad);
     var renderProp1 = renderProp(dictMonad);
     return function(v) {
-      return div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))])(fold2([foldMap4(function($110) {
-        return pure6(renderHyp1($110));
-      })(v.value0.hyps), [hr([css(tell3(["border: none", "height: 0.2em", "background-color: black"]))])], [renderProp1(v.value0.prop)]]));
+      return div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))])(fold2([foldMap4(function($113) {
+        return pure6(renderHyp1($113));
+      })(v.value0.hyps), [div2([css(tell3(["height: 0.1em", "background-color: black"]))])([])], [renderProp1(v.value0.prop)]]));
     };
   };
   var renderStmt = function(dictMonad) {
@@ -6448,31 +6546,31 @@
     return function(v) {
       if (v instanceof DefRel) {
         return renderStmt_template1({
-          labels: [div2([])([renderPunc1("rel")]), div2([])([renderLine1(fold2([[renderName1(v.value0), renderPunc1("(")], renderLat1(v.value1), [renderPunc1(")")]]))])],
+          labels: [div2([])([renderPunc1("define relation")]), div2([])([renderLine1(fold2([[renderName1(v.value0), renderPunc1("(")], renderLat1(v.value1), [renderPunc1(")")]]))])],
           body: none1
         });
       }
       ;
       if (v instanceof DefRule) {
         return renderStmt_template1({
-          labels: [div2([])([renderPunc1("rule")]), div2([])([renderName1(v.value0)])],
+          labels: [div2([])([renderPunc1("define rule")]), div2([])([renderName1(v.value0)])],
           body: pure1(div2([])([renderRule1(v.value1)]))
         });
       }
       ;
-      throw new Error("Failed pattern match at Foliage.Ui.Program (line 71, column 1 - line 71, column 50): " + [v.constructor.name]);
+      throw new Error("Failed pattern match at Foliage.Ui.Program (line 70, column 1 - line 70, column 50): " + [v.constructor.name]);
     };
   };
   var renderProg = function(dictMonad) {
     var renderStmt1 = renderStmt(dictMonad);
     return function(v) {
-      return div2([css(tell3(["display: flex", "flex-direction: column", "width: 100%"]))])(foldMap4(function($111) {
-        return pure6(renderStmt1($111));
+      return div2([css(tell3(["display: flex", "flex-direction: column", "width: 100%"]))])(foldMap4(function($114) {
+        return pure6(renderStmt1($114));
       })(v.value0));
     };
   };
-  var component2 = function(dictMonadAff) {
-    var renderProg1 = renderProg(dictMonadAff.MonadEffect0().Monad0());
+  var component2 = function(dictMonad) {
+    var renderProg1 = renderProg(dictMonad);
     var render = function(state3) {
       return div2([css(discard3(tell3(["flex-grow: 1", "flex-shrink: 1"]))(function() {
         return discard3(tell3(["padding: 0.5em"]))(function() {
@@ -7609,7 +7707,7 @@
     return MessageAction2;
   }();
   var component3 = function(dictMonadAff) {
-    var component1 = component2(dictMonadAff);
+    var component1 = component2(dictMonadAff.MonadEffect0().Monad0());
     var component22 = component(dictMonadAff);
     var render = function(v) {
       return div2([css(tell5(["display: flex", "flex-direction: row", "height: 100vh", "width: 100vw"]))])([slot1($$Proxy.value)(unit)(component1)({

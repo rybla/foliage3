@@ -22,6 +22,7 @@ import Data.TraversableWithIndex (traverseWithIndex)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Unfoldable (none)
 import Data.Unfoldable1 (singleton)
+import Foliage.Utility (todo)
 
 --------------------------------------------------------------------------------
 -- types
@@ -71,7 +72,7 @@ applyRule (Rule rule) = case rule.hyps of
     -- for each known `prop`
     map fold $ props # traverse \prop ->
       -- check if `prop` can satisfy `hyp`
-      unify hyp prop # lift >>= case _ of
+      unify hyp prop # runMaybeT # lift >>= case _ of
         Nothing -> pure none
         -- if it can, then update rest of the rule with resulting `sigma`,
         -- then apply the rest of the rule
@@ -107,15 +108,13 @@ insertProp p = flip foldM (true /\ none) \(new /\ props) q -> do
 --------------------------------------------------------------------------------
 
 -- unify p q = Just σ  <==>  σ p = q
-unify :: forall m. Monad m => Prop -> Prop -> M m (Maybe Subst)
+unify :: forall m. Monad m => Prop -> Prop -> MaybeT (M m) Subst
 unify (Prop _ p) (Prop _ q) = unify_Term p q
 
-unify_Term :: forall m. Monad m => Term -> Term -> M m (Maybe Subst)
-unify_Term UnitTerm UnitTerm = pure $ pure empty
-unify_Term UnitTerm _ = pure none
-unify_Term (NatTerm m) (NatTerm n) | m == n = pure $ pure empty
-unify_Term (NatTerm _) _ = pure none
-unify_Term (VarTerm x) q = pure $ pure $ Map.singleton x q
+unify_Term :: forall m. Monad m => Term -> Term -> MaybeT (M m) Subst
+unify_Term (DataTerm a) (DataTerm b) | a == b = pure empty
+unify_Term (VarTerm x) q = pure $ Map.singleton x q
+unify_Term _ _ = empty
 
 --------------------------------------------------------------------------------
 -- Subst
@@ -143,8 +142,9 @@ subst_Comp :: forall m. Monad m => Comp -> SubstM m Comp
 subst_Comp (Invoke x args) = Invoke x <$> (args # traverse subst_Term)
 
 subst_Term :: forall m. Monad m => Term -> SubstM m Term
-subst_Term UnitTerm = pure $ UnitTerm
-subst_Term (NatTerm n) = pure $ NatTerm n
+subst_Term (DataTerm UnitTerm) = pure $ DataTerm UnitTerm
+subst_Term (DataTerm (BoolTerm b)) = pure $ DataTerm (BoolTerm b)
+subst_Term (DataTerm (NatTerm n)) = pure $ DataTerm (NatTerm n)
 subst_Term a@(VarTerm x) = do
   { sigma } <- ask
   pure $ sigma # Map.lookup x # fromMaybe a
@@ -185,7 +185,7 @@ latCompare_Term _ a1 (VarTerm x2) = do
 latCompare_Term UnitLat _ _ =
   pure $ Just EQ
 
-latCompare_Term NatLat (NatTerm n1) (NatTerm n2) =
+latCompare_Term NatLat (DataTerm (NatTerm n1)) (DataTerm (NatTerm n2)) =
   pure $ Just $ compare n1 n2
 
 latCompare_Term (DiscreteLat l) a1 a2 =
@@ -220,7 +220,7 @@ solveSysForSubst = init empty >=> go
     -- then unify `a` and `a'`,
     -- then append any resulting substitution from that to the rest of the system to be initialized
     Just a' -> do
-      unify_Term a a' # lift >>= case _ of
+      unify_Term a a' # runMaybeT # lift >>= case _ of
         Nothing -> empty
         Just sigma' -> do
           a'' <- a # subst_Term # flip runReaderT { sigma: sigma' } # lift
