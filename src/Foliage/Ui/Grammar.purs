@@ -6,11 +6,11 @@ import Prelude
 import Control.Monad.Reader (Reader, ask)
 import Control.Monad.Writer (tell)
 import Data.Array as Array
-import Data.Foldable (fold, foldMap, null)
+import Data.Foldable (fold, foldMap, intercalate, null)
 import Data.List (List)
-import Data.List as List
 import Data.Maybe (Maybe, maybe)
 import Data.Traversable (sequence, traverse)
+import Data.Tuple.Nested ((/\))
 import Data.Unfoldable (none)
 import Data.Variant (Variant)
 import Foliage.Pretty (pretty)
@@ -79,6 +79,28 @@ renderStmt (DefRule x r) = do
     HH.div [] <$>
       ([ renderRule r ] # sequence)
   renderStmt_template { labels, body: pure body }
+renderStmt (DefFun x ps t f) = do
+  labels <-
+    [ HH.div [] <$> ([ renderPunc "fun" ] # sequence)
+    , HH.div
+        [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ] <$>
+        ( [ [ renderName x ]
+          , [ renderPunc "(" ]
+          , ps
+              # map (\(x' /\ t') -> [ renderName x', renderPunc ":", renderTyp t' ])
+              # intercalate [ renderPunc "," ]
+          , [ renderPunc ")" ]
+          , [ renderPunc "→", renderTyp t ]
+          , [ renderPunc ":=", renderPunc "<fun>" ]
+          ] # fold # sequence
+        )
+    ] # sequence
+  renderStmt_template { labels, body: none }
+
+renderTyp :: forall m as. Typ -> Reader Ctx (HTML m as)
+renderTyp UnitTyp = renderKeyword "𝕌"
+renderTyp BoolType = renderKeyword "𝔹"
+renderTyp IntType = renderKeyword "ℤ"
 
 renderStmt_template :: forall m as. { labels :: Array (HTML m as), body :: Maybe (HTML m as) } -> Reader Ctx (HTML m as)
 renderStmt_template { labels, body } =

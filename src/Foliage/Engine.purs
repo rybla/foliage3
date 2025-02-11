@@ -4,18 +4,19 @@ import Foliage.Grammar
 import Prelude
 
 import Control.Alternative (empty)
+import Control.Applicative (pure)
 import Control.Monad.Except (ExceptT, throwError)
 import Control.Monad.Maybe.Trans (MaybeT, runMaybeT)
-import Control.Monad.Reader (ReaderT, ask, runReaderT)
+import Control.Monad.Reader (ReaderT, ask, asks, runReaderT)
 import Control.Monad.State (StateT, execStateT, get, modify_)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (WriterT, runWriterT, tell)
+import Data.Either (either)
 import Data.Foldable (foldM)
 import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Newtype (wrap)
 import Data.Ordering (invert)
 import Data.Set as Set
 import Data.Traversable (fold, traverse)
@@ -23,9 +24,12 @@ import Data.TraversableWithIndex (traverseWithIndex)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Unfoldable (none)
 import Data.Unfoldable1 (singleton)
+import Effect.Aff (Milliseconds)
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Foliage.Pretty (parens, pretty)
+import Foliage.Ui.Common (Error)
+import Foliage.Utility (todo)
 import Halogen.HTML (PlainHTML)
 import Halogen.HTML as HH
 
@@ -38,16 +42,16 @@ type M m = ReaderT (Ctx m) (StateT Env (ExceptT Error m))
 type Ctx m =
   { relLats :: Map Name Lat
   , rules :: Map Name Rule
+  , funs :: Map Name Fun
   , set_props :: List Prop -> m Unit
   , trace :: PlainHTML -> m Unit
+  , delay_duration :: Milliseconds
   }
 
 type Env =
   { gas :: Int
   , props :: List Prop
   }
-
-type Error = Array PlainHTML
 
 set_props :: forall m. MonadAff m => List Prop -> M m Unit
 set_props props = do
@@ -69,14 +73,15 @@ main
   :: forall m
    . MonadAff m
   => { prog :: Prog
-     , gas :: Int
+     , initial_gas :: Int
+     , delay_duration :: Milliseconds
      , set_props :: List Prop -> m Unit
      , trace :: PlainHTML -> m Unit
      }
   -> ExceptT Error m
        { props :: List Prop }
 main args = do
-  let { relLats, rules } = defs_of_Prog args.prog
+  let { relLats, rules, funs } = defs_of_Prog args.prog
   { props } <-
     ( do
         trace $ HH.text "begin main"
@@ -86,11 +91,13 @@ main args = do
       # flip runReaderT
           { relLats
           , rules
+          , funs: funs
+          , delay_duration: args.delay_duration
           , set_props: args.set_props
           , trace: args.trace
           }
       # flip execStateT
-          { gas: args.gas
+          { gas: args.initial_gas
           , props: none
           }
   pure { props }
@@ -110,15 +117,16 @@ loop = do
     ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(_rule_name /\ Rule rule) -> do
       Rule rule # applyRule # flip runReaderT env.props
   trace $ HH.text $ "new_props = " <> pretty new_props
-  new /\ props' :: Boolean /\ List Prop <- new_props # flip foldM (true /\ env.props) \(new /\ props') p -> do
-    new' /\ props'' <- insertProp p props'
-    trace $ HH.text $ "insertProp " <> parens (pretty p) <> " " <> parens (pretty props') <> " -> " <> parens (pretty (new' /\ props''))
-    pure $ (new || new') /\ props''
+  new /\ props' :: Boolean /\ List Prop <-
+    new_props # flip foldM (false /\ env.props) \(new /\ props') p -> do
+      new' /\ props'' <- insertProp p props'
+      trace $ HH.text $ "insertProp " <> parens (pretty p) <> " " <> parens (pretty props') <> " -> " <> parens (pretty (new' /\ props''))
+      pure $ (new || new') /\ props''
   trace $ HH.text $ "new = " <> pretty new
   trace $ HH.text $ "props' = " <> pretty props'
   set_props props'
   modify_ _ { gas = env.gas - 1 }
-  Aff.delay (wrap 1000.0) # liftAff
+  Aff.delay ctx.delay_duration # liftAff
   when new loop
 
 applyRule :: forall m. MonadAff m => Rule -> ReaderT (List Prop) (M m) (List Prop)
@@ -143,26 +151,35 @@ applyRule (Rule rule) = do
             lift $ trace $ HH.text $ "✓ " <> pretty hyp <> " by " <> pretty prop'
             rule' <- Rule rule { hyps = hyps } # subst_Rule # flip runReaderT { sigma } # lift
             rule' # applyRule
-    Cons (CompHyp _x _c) hyps -> do
-      -- TODO: run `c` and store result in x
-      Rule rule { hyps = hyps } # applyRule
+    Cons (CompHyp x c) hyps -> do
+      a <- runComp c # lift
+      rule' <- Rule rule { hyps = hyps } # subst_Rule # flip runReaderT { sigma: Map.singleton x a } # lift
+      rule' # applyRule
     Cons (CondHyp _a) hyps -> do
       -- TODO: evaluate `a`. if its true, then continue
       -- TODO: if it has free vars, then its badly-scoped
       Rule rule { hyps = hyps } # applyRule
+
+runComp :: forall m. MonadAff m => Comp -> M m Term
+runComp (Invoke x args) = do
+  ctx <- ask
+  f <- ctx.funs # Map.lookup x # flip maybe pure
+    (throwError [ HH.text "runComp", HH.text $ "unknown fun name: " <> pretty x ])
+  f args # flip either pure
+    (\err -> throwError [ HH.text "runComp", HH.text $ "fun: " <> pretty x, HH.text $ "err = " <> err ])
 
 -- • if `p` is subsumed by something in `props`, then yields `props`
 -- • if `p` subsumes some props `props'` in `props`, then yields `p : props - props'`
 -- • otherwise, yields `p : props`
 -- TODO: implement more efficiently
 insertProp :: forall m. MonadAff m => Prop -> List Prop -> M m (Boolean /\ List Prop)
-insertProp p props = go # map \(new /\ props') -> new /\ (p : props')
+insertProp p props = go # map \(new /\ props') -> new /\ (if new then p : props' else props')
   where
   go = props # flip foldM (true /\ none) \(new /\ props') q -> do
     p `latCompare_Prop` q >>= case _ of
       _ /\ Nothing -> pure $ new /\ (q : props')
       _ /\ Just LT -> pure $ false /\ (q : props')
-      _ /\ Just EQ -> pure $ false /\ props'
+      _ /\ Just EQ -> pure $ false /\ (q : props')
       _ /\ Just GT -> pure $ new /\ props'
 
 --------------------------------------------------------------------------------

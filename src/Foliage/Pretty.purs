@@ -12,11 +12,14 @@ import Data.Tuple.Nested ((/\))
 class Pretty a where
   pretty :: a -> String
 
+instance Pretty String where
+  pretty x = x
+
 instance Pretty Int where
-  pretty = show
+  pretty x = show x
 
 instance Pretty Boolean where
-  pretty = show
+  pretty x = show x
 
 instance Pretty a => Pretty (List a) where
   pretty xs | null xs = "∅"

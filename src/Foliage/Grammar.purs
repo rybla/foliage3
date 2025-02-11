@@ -3,6 +3,7 @@ module Foliage.Grammar where
 import Prelude
 
 import Control.Alternative (empty)
+import Data.Either (Either)
 import Data.Eq.Generic (genericEq)
 import Data.Foldable (intercalate)
 import Data.Generic.Rep (class Generic)
@@ -14,6 +15,7 @@ import Data.Ord.Generic (genericCompare)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Data.Tuple.Nested (type (/\), (/\))
 import Foliage.Pretty (class Pretty, parens, pretty)
 import Foliage.Utility (prop)
 
@@ -27,24 +29,24 @@ instance Show Prog where
 instance Pretty Prog where
   pretty (Prog stmts) = stmts # map pretty # intercalate "\n"
 
-instance Eq Prog where
-  eq x y = genericEq x y
-
 data Stmt
   = DefRel Name Lat
   | DefRule Name Rule
+  | DefFun Name (Array (Name /\ Typ)) Typ Fun
+
+type Fun = Array Term -> Either String Term
 
 derive instance Generic Stmt _
 
 instance Show Stmt where
-  show x = genericShow x
+  show (DefRel x l) = "DefRel " <> show x <> " " <> show l
+  show (DefRule x r) = "DefRule " <> show x <> " " <> show r
+  show (DefFun x ps t _) = "DefFun " <> show x <> " " <> show ps <> " " <> show t <> " " <> "<fun>"
 
 instance Pretty Stmt where
   pretty (DefRel x l) = "relation " <> pretty x <> " " <> parens (pretty l)
-  pretty (DefRule x r) = "rule " <> pretty x <> ": " <> pretty r
-
-instance Eq Stmt where
-  eq x y = genericEq x y
+  pretty (DefRule x r) = "rule " <> pretty x <> " := " <> pretty r
+  pretty (DefFun x ps t _) = "fun " <> pretty x <> parens (ps # map (\(x /\ t) -> pretty x <> " : " <> pretty t) # intercalate ", ") <> " -> " <> pretty t <> " := " <> "<fun>"
 
 newtype Name = Name String
 
@@ -251,12 +253,12 @@ defs_of_Prog
   :: Prog
   -> { relLats :: Map Name Lat
      , rules :: Map Name Rule
+     , funs :: Map Name Fun
      }
 defs_of_Prog (Prog stmts) =
-  stmts # foldr go
-    { relLats: empty
-    , rules: empty
-    }
+  stmts # foldr go { relLats: empty, rules: empty, funs: empty }
   where
   go (DefRel x l) = prop @"relLats" <<< at x .~ pure l
   go (DefRule x r) = prop @"rules" <<< at x .~ pure r
+  go (DefFun x _ _ f) = prop @"funs" <<< at x .~ pure f
+
