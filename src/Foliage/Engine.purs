@@ -87,9 +87,9 @@ main args = do
 
 loop :: forall m. Monad m => M m Unit
 loop = do
-  trace $ HH.text "begin loop"
   ctx <- ask
   env <- get
+  trace $ HH.text $ "begin loop; gas = " <> show env.gas
   when (env.gas <= 0) do
     throwError [ HH.text "out of gas" ]
   new_props :: List Prop <- map fold do
@@ -106,31 +106,35 @@ loop = do
   loop # when new
 
 applyRule :: forall m. Monad m => Rule -> ReaderT (List Prop) (M m) (List Prop)
-applyRule (Rule rule) = case rule.hyps of
-  Nil -> pure $ singleton rule.prop
-  Cons (PropHyp hyp) hyps -> do
-    props <- ask
-    -- for each known `prop`
-    map fold $ props # traverse \prop ->
-      -- check if `prop` can satisfy `hyp`
-      unify hyp prop # runMaybeT # lift >>= case _ of
-        Nothing -> pure none
-        -- if it can, then update rest of the rule with resulting `sigma`,
-        -- then apply the rest of the rule
-        Just sigma -> do
-          rule' <-
-            Rule rule { hyps = hyps }
-              # subst_Rule
-              # flip runReaderT { sigma }
-              # lift
-          rule' # applyRule
-  Cons (CompHyp _x _c) hyps -> do
-    -- TODO: run `c` and store result in x
-    Rule rule { hyps = hyps } # applyRule
-  Cons (CondHyp _a) hyps -> do
-    -- TODO: evaluate `a`. if its truem, then continue
-    -- TODO: if it has free vars, then its badly-scoped
-    Rule rule { hyps = hyps } # applyRule
+applyRule (Rule rule) = do
+  lift $ trace $ HH.text $ "apply rule " <> show (Rule rule)
+  case rule.hyps of
+    Nil -> pure $ singleton rule.prop
+    Cons (PropHyp hyp) hyps -> do
+      props <- ask
+      -- for each known `prop`
+      map fold $ props # traverse \prop -> do
+        lift $ trace $ HH.text $ "check if " <> show prop <> " satisfies" <> show hyp
+        -- check if `prop` can satisfy `hyp`
+        unify hyp prop # runMaybeT # lift >>= case _ of
+          Nothing -> pure none
+          -- if it can, then update rest of the rule with resulting `sigma`,
+          -- then apply the rest of the rule
+          Just sigma -> do
+            lift $ trace $ HH.text $ "it does, so, apply rest of rule"
+            rule' <-
+              Rule rule { hyps = hyps }
+                # subst_Rule
+                # flip runReaderT { sigma }
+                # lift
+            rule' # applyRule
+    Cons (CompHyp _x _c) hyps -> do
+      -- TODO: run `c` and store result in x
+      Rule rule { hyps = hyps } # applyRule
+    Cons (CondHyp _a) hyps -> do
+      -- TODO: evaluate `a`. if its truem, then continue
+      -- TODO: if it has free vars, then its badly-scoped
+      Rule rule { hyps = hyps } # applyRule
 
 -- • if `p` is subsumed by something in `props`, then yields `props`
 -- • if `p` subsumes some props `props'` in `props`, then yields `p : props - props'`
