@@ -46,7 +46,6 @@ component = H.mkComponent { initialState, eval, render }
     { raise: \o -> do
         H.raise o
     , fixpoint: \_ -> do
-        H.raise $ HH.text "handleAction.GenerateFixpoint"
         { prog } <- get
         Engine.main
           { prog

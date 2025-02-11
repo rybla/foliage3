@@ -64,16 +64,21 @@ main
        { props :: List Prop }
 main args = do
   let { relLats, rules } = defs_of_Prog args.prog
-  { props } <- loop
-    # flip runReaderT
-        { relLats
-        , rules
-        , trace: args.trace
-        }
-    # flip execStateT
-        { gas: args.gas
-        , props: none
-        }
+  { props } <-
+    ( do
+        trace $ HH.text "begin main"
+        loop
+        trace $ HH.text "end main"
+    )
+      # flip runReaderT
+          { relLats
+          , rules
+          , trace: args.trace
+          }
+      # flip execStateT
+          { gas: args.gas
+          , props: none
+          }
   pure { props }
 
 --------------------------------------------------------------------------------
@@ -82,6 +87,7 @@ main args = do
 
 loop :: forall m. Monad m => M m Unit
 loop = do
+  trace $ HH.text "begin loop"
   ctx <- ask
   env <- get
   when (env.gas <= 0) do
@@ -96,6 +102,7 @@ loop = do
     { props = props'
     , gas = env.gas - 1
     }
+  trace $ HH.text "begin loop"
   loop # when new
 
 applyRule :: forall m. Monad m => Rule -> ReaderT (List Prop) (M m) (List Prop)
