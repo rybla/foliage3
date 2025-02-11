@@ -2,13 +2,19 @@ module Foliage.Grammar where
 
 import Prelude
 
+import Control.Alternative (empty)
 import Data.Eq.Generic (genericEq)
 import Data.Generic.Rep (class Generic)
-import Data.List (List)
+import Data.Lens ((%~), (.=), (.~))
+import Data.Lens.At (at)
+import Data.List (List, foldr)
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Ord.Generic (genericCompare)
 import Data.Set (Set)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
+import Foliage.Utility (prop)
 
 data Prog = Prog (List Stmt)
 
@@ -189,8 +195,22 @@ instance Ord Rule where
 -- utilities
 --------------------------------------------------------------------------------
 
-names_Term :: Term -> Set Name
-names_Term (DataTerm (UnitTerm)) = mempty
-names_Term (DataTerm ((BoolTerm _))) = mempty
-names_Term (DataTerm ((NatTerm _))) = mempty
-names_Term (VarTerm x) = Set.singleton x
+name_of_Term :: Term -> Set Name
+name_of_Term (DataTerm (UnitTerm)) = mempty
+name_of_Term (DataTerm ((BoolTerm _))) = mempty
+name_of_Term (DataTerm ((NatTerm _))) = mempty
+name_of_Term (VarTerm x) = Set.singleton x
+
+defs_of_Prog
+  :: Prog
+  -> { relLats :: Map Name Lat
+     , rules :: Map Name Rule
+     }
+defs_of_Prog (Prog stmts) =
+  stmts # foldr go
+    { relLats: empty
+    , rules: empty
+    }
+  where
+  go (DefRel x l) = prop @"relLats" <<< at x .~ pure l
+  go (DefRule x r) = prop @"rules" <<< at x .~ pure r

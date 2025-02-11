@@ -7,7 +7,7 @@ import Control.Alternative (empty)
 import Control.Monad.Except (ExceptT, throwError)
 import Control.Monad.Maybe.Trans (MaybeT, runMaybeT)
 import Control.Monad.Reader (ReaderT, ask, runReaderT)
-import Control.Monad.State (StateT, get, modify_)
+import Control.Monad.State (StateT, execStateT, get, modify_)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (WriterT, runWriterT, tell)
 import Data.Foldable (foldM)
@@ -22,7 +22,8 @@ import Data.TraversableWithIndex (traverseWithIndex)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Unfoldable (none)
 import Data.Unfoldable1 (singleton)
-import Foliage.Utility (todo)
+import Halogen.HTML (PlainHTML)
+import Halogen.HTML as HH
 
 --------------------------------------------------------------------------------
 -- types
@@ -33,19 +34,47 @@ type M m = (ReaderT (Ctx m) (StateT Env (ExceptT Error m)))
 type Ctx m =
   { relLats :: Map Name Lat
   , rules :: Map Name Rule
-  , trace :: String -> m Unit
+  , trace :: PlainHTML -> m Unit
   }
 
 type Env =
-  { props :: List Prop
+  { gas :: Int
+  , props :: List Prop
   }
 
-type Error = Array String
+type Error = Array PlainHTML
 
-trace :: forall m. Monad m => String -> M m Unit
+trace :: forall m. Monad m => PlainHTML -> M m Unit
 trace msg = do
   ctx <- ask
   ctx.trace msg # lift # lift # lift
+
+--------------------------------------------------------------------------------
+-- main
+--------------------------------------------------------------------------------
+
+main
+  :: forall m
+   . Monad m
+  => { prog :: Prog
+     , gas :: Int
+     , trace :: PlainHTML -> m Unit
+     }
+  -> ExceptT Error m
+       { props :: List Prop }
+main args = do
+  let { relLats, rules } = defs_of_Prog args.prog
+  { props } <- loop
+    # flip runReaderT
+        { relLats
+        , rules
+        , trace: args.trace
+        }
+    # flip execStateT
+        { gas: args.gas
+        , props: none
+        }
+  pure { props }
 
 --------------------------------------------------------------------------------
 -- loop
@@ -55,13 +84,18 @@ loop :: forall m. Monad m => M m Unit
 loop = do
   ctx <- ask
   env <- get
+  when (env.gas <= 0) do
+    throwError [ HH.text "out of gas" ]
   new_props :: List Prop <- map fold do
     ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(_rule_name /\ Rule rule) -> do
       Rule rule # applyRule # flip runReaderT env.props
   new /\ props' :: Boolean /\ List Prop <- new_props # flip foldM (true /\ none) \(new /\ props') p -> do
     new' /\ props'' <- insertProp p props'
     pure $ (new || new') /\ props''
-  modify_ _ { props = props' }
+  modify_ _
+    { props = props'
+    , gas = env.gas - 1
+    }
   loop # when new
 
 applyRule :: forall m. Monad m => Rule -> ReaderT (List Prop) (M m) (List Prop)
@@ -198,7 +232,7 @@ latCompare_Term (OppositeLat l) a1 a2 =
     Nothing -> pure Nothing
     Just o -> pure $ Just $ invert o
 
-latCompare_Term l a1 a2 = throwError [ "latCompare_Term", "terms are not compatible with lattice " <> show l <> ": " <> show a1 <> ", " <> show a2 ]
+latCompare_Term l a1 a2 = throwError [ HH.text "latCompare_Term", HH.text $ "terms are not compatible with lattice " <> show l <> ": " <> show a1 <> ", " <> show a2 ]
 
 --------------------------------------------------------------------------------
 -- utilities
@@ -236,12 +270,12 @@ solveSysForSubst = init empty >=> go
     else
       pure sigma
 
-  occursIn x a = x `Set.member` names_Term a
+  occursIn x a = x `Set.member` name_of_Term a
 
 fromRelGetLat :: forall m. Monad m => Rel -> M m Lat
 fromRelGetLat (Rel x) = do
   { relLats } <- ask
   relLats
     # Map.lookup x
-    # maybe (throwError [ "fromRelGetLat", "unknown relation name: " <> show x ]) pure
+    # maybe (throwError [ HH.text "fromRelGetLat", HH.text $ "unknown relation name: " <> show x ]) pure
 

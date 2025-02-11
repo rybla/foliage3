@@ -3,15 +3,21 @@ module Foliage.Ui.Program where
 import Foliage.Grammar
 import Prelude
 
+import Control.Monad.Except (runExceptT)
+import Control.Monad.Reader (runReader)
 import Control.Monad.Writer (tell)
-import Data.Array as Array
-import Data.Foldable (fold, foldMap)
-import Data.Maybe (Maybe, maybe)
+import Data.Either (Either(..))
+import Data.List (List)
 import Data.Unfoldable (none)
+import Data.Variant (match)
+import Foliage.Engine as Engine
 import Foliage.Ui.Common (Message)
-import Foliage.Utility (css)
+import Foliage.Ui.Grammar (renderProg)
+import Foliage.Utility (css, inj)
+import Halogen (get, modify_)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 
 type Input =
   { prog :: Prog
@@ -21,149 +27,88 @@ type Output = Message
 
 type State =
   { prog :: Prog
+  , props :: List Prop
   }
-
-data Action = Raise Output
 
 component :: forall query m. Monad m => H.Component query Input Output m
 component = H.mkComponent { initialState, eval, render }
   where
   initialState :: Input -> State
   initialState input =
-    { prog: input.prog }
+    { prog: input.prog
+    , props: none
+    }
 
   eval = H.mkEval H.defaultEval
     { handleAction = handleAction }
 
-  handleAction (Raise o) = do
-    H.raise o
+  handleAction = match
+    { raise: \o -> do
+        H.raise o
+    , fixpoint: \_ -> do
+        H.raise $ HH.text "handleAction.GenerateFixpoint"
+        { prog } <- get
+        Engine.main
+          { prog
+          , gas: 100
+          , trace: H.raise
+          } # runExceptT >>= case _ of
+          Left err -> H.raise $
+            HH.div
+              []
+              [ HH.div [] [ HH.text "error" ]
+              , HH.div [] err
+              ]
+          Right result -> do
+            modify_ _ { props = result.props }
+    }
+
+  -- handleAction (Raise o) = do
+  --   H.raise o
+  -- handleAction GenerateFixpoint = do
+  --   H.raise $ HH.text "handleAction.GenerateFixpoint"
+  --   { prog } <- get
+  --   Engine.main
+  --     { prog
+  --     , gas: 100
+  --     , trace: H.raise
+  --     } # runExceptT >>= case _ of
+  --     Left err -> H.raise $
+  --       HH.div
+  --         []
+  --         [ HH.div [] [ HH.text "error" ]
+  --         , HH.div [] err
+  --         ]
+  --     Right result -> do
+  --       modify_ _ { props = result.props }
 
   render state =
-    HH.div
-      [ css do
-          tell [ "flex-grow: 1", "flex-shrink: 1" ]
-          tell [ "padding: 0.5em" ]
-          tell [ "display: flex", "flex-direction: column" ]
-      ]
-      [ HH.div
-          [ css do tell [ "padding: 0.5em", "background-color: black", "color: white" ] ]
-          [ HH.text "program" ]
-      , HH.div
-          [ css do
-              tell [ "width: calc(100% - 2*0.5em)", "padding: 0.5em", "font-family: monospace" ]
-              tell [ "height: calc(100vh - 3em)", "overflow-y: scroll" ]
-          ]
-          [ renderProg state.prog ]
-      ]
-
-type HTML m = HH.ComponentHTML Action () m
-
-renderProg :: forall m. Monad m => Prog -> HTML m
-renderProg (Prog stmts) =
-  HH.div
-    [ css do
-        -- tell [ "gap: 0.5em" ]
-        tell [ "display: flex", "flex-direction: column", "width: 100%" ]
-    ] $
-    stmts # foldMap (renderStmt >>> pure)
-
-renderStmt :: forall m. Monad m => Stmt -> HTML m
-renderStmt (DefRel x l) =
-  renderStmt_template
-    { labels:
-        [ HH.div [] [ renderPunc "define relation" ]
-        , HH.div [] [ renderLine $ fold $ [ [ renderName x, renderPunc "(" ], renderLat l, [ renderPunc ")" ] ] ]
+    let
+      html_prog =
+        renderProg state.prog
+          # flip runReader
+              { props: state.props }
+    in
+      HH.div
+        [ css do
+            tell [ "flex-grow: 1", "flex-shrink: 1" ]
+            tell [ "padding: 0.5em" ]
+            tell [ "display: flex", "flex-direction: column" ]
         ]
-    , body: none
-    }
-renderStmt (DefRule x r) =
-  renderStmt_template
-    { labels:
-        [ HH.div [] [ renderPunc "define rule" ]
-        , HH.div [] [ renderName x ]
+        [ HH.div
+            [ css do tell [ "padding: 0.5em", "background-color: black", "color: white" ] ]
+            [ HH.text "program" ]
+        , HH.div
+            [ css do tell [ "padding: 0.5em", "display: flex", "flex-direction: row" ] ]
+            [ HH.button
+                [ HE.onClick $ const $ inj @"fixpoint" unit ]
+                [ HH.text "fixpoint" ]
+            ]
+        , HH.div
+            [ css do
+                tell [ "width: calc(100% - 2*0.5em)", "padding: 0.5em", "font-family: monospace" ]
+                tell [ "height: calc(100vh - 3em)", "overflow-y: scroll" ]
+            ]
+            [ html_prog ]
         ]
-    , body: pure $
-        HH.div [] [ renderRule r ]
-    }
 
-renderStmt_template :: forall m. Monad m => { labels :: Array (HTML m), body :: Maybe (HTML m) } -> HTML m
-renderStmt_template { labels, body } =
-  HH.div
-    [ css do
-        -- tell ["box-shadow: 0 0 0 1px black inset"]
-        -- tell [ "width: 100%", "overflow: scroll" ]
-        tell [ "display: flex", "flex-direction: column", "gap: 0.5em", "padding: 0.5em" ]
-    ] $ fold
-    [ [ HH.div
-          [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ]
-          labels
-      ]
-    , body # maybe none \body ->
-        [ HH.div [ css do tell [ "margin-left: 1em" ] ]
-            [ body ]
-        ]
-    ]
-
-renderRule :: forall m. Monad m => Rule -> HTML m
-renderRule (Rule rule) =
-  HH.div
-    [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ] $ fold
-    [ rule.hyps # foldMap (renderHyp >>> pure)
-    , [ HH.div [ css do tell [ "height: 0.1em", "background-color: black" ] ] [] ]
-    , [ renderProp rule.prop ]
-    ]
-
-renderHyp :: forall m. Monad m => Hyp -> HTML m
-renderHyp (PropHyp p) = renderProp p
-renderHyp (CompHyp x c) = renderLine [ renderName x, renderPunc "←", renderComp c ]
-renderHyp (CondHyp a) = renderLine [ renderPunc "if", renderTerm a ]
-
-renderComp :: forall m. Monad m => Comp -> HTML m
-renderComp (Invoke x args) = renderLine $ fold $
-  [ [ renderName x, renderPunc "(" ]
-  , args # map renderTerm # Array.intersperse (renderPunc ",")
-  , [ renderPunc ")" ]
-  ]
-
-renderProp :: forall m. Monad m => Prop -> HTML m
-renderProp (Prop r a) = renderLine [ renderRel r, renderPunc "(", renderTerm a, renderPunc ")" ]
-
-renderRel :: forall m. Monad m => Rel -> HTML m
-renderRel (Rel x) = renderName x
-
-renderLat :: forall m. Monad m => Lat -> Array (HTML m)
-renderLat UnitLat = [ renderKeyword "Unit" ]
-renderLat BoolLat = [ renderKeyword "Bool" ]
-renderLat NatLat = [ renderKeyword "Nat" ]
-renderLat (DiscreteLat l) = [ renderKeyword "Discrete", renderPunc "(" ] <> renderLat l <> [ renderPunc ")" ]
-renderLat (OppositeLat l) = [ renderKeyword "Opposite", renderPunc "(" ] <> renderLat l <> [ renderPunc ")" ]
-
-renderTerm :: forall m. Monad m => Term -> HTML m
-renderTerm (DataTerm UnitTerm) = renderKeyword "unit"
-renderTerm (DataTerm (BoolTerm b)) = renderKeyword (show b)
-renderTerm (DataTerm (NatTerm n)) = renderKeyword (show n)
-renderTerm (VarTerm x) = renderName x
-
-renderName :: forall m. Monad m => Name -> HTML m
-renderName x =
-  HH.div
-    [ css do tell [ "color: blue" ] ]
-    [ HH.text $ fromNameToString x ]
-
-renderKeyword :: forall m. Monad m => String -> HTML m
-renderKeyword s =
-  HH.div
-    [ css do tell [ "color: green" ] ]
-    [ HH.text s ]
-
-renderPunc :: forall m. Monad m => String -> HTML m
-renderPunc s =
-  HH.div
-    [ css do tell [ "color: black" ] ]
-    [ HH.text s ]
-
-renderLine :: forall m. Monad m => Array (HTML m) -> HTML m
-renderLine xs =
-  HH.div
-    [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ]
-    xs
