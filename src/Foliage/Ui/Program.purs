@@ -49,7 +49,8 @@ component = H.mkComponent { initialState, eval, render }
         { prog } <- get
         Engine.main
           { prog
-          , gas: 100
+          , gas: 2
+          , set_props: \props -> modify_ _ { props = props }
           , trace: H.raise
           } # runExceptT >>= case _ of
           Left err -> H.raise $
@@ -61,25 +62,6 @@ component = H.mkComponent { initialState, eval, render }
           Right result -> do
             modify_ _ { props = result.props }
     }
-
-  -- handleAction (Raise o) = do
-  --   H.raise o
-  -- handleAction GenerateFixpoint = do
-  --   H.raise $ HH.text "handleAction.GenerateFixpoint"
-  --   { prog } <- get
-  --   Engine.main
-  --     { prog
-  --     , gas: 100
-  --     , trace: H.raise
-  --     } # runExceptT >>= case _ of
-  --     Left err -> H.raise $
-  --       HH.div
-  --         []
-  --         [ HH.div [] [ HH.text "error" ]
-  --         , HH.div [] err
-  --         ]
-  --     Right result -> do
-  --       modify_ _ { props = result.props }
 
   render state =
     let

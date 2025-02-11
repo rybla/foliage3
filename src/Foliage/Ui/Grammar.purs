@@ -3,10 +3,10 @@ module Foliage.Ui.Grammar where
 import Foliage.Grammar
 import Prelude
 
-import Control.Monad.Reader (Reader)
+import Control.Monad.Reader (Reader, ask)
 import Control.Monad.Writer (tell)
 import Data.Array as Array
-import Data.Foldable (fold, foldMap)
+import Data.Foldable (fold, foldMap, null)
 import Data.List (List)
 import Data.Maybe (Maybe, maybe)
 import Data.Traversable (sequence, traverse)
@@ -32,6 +32,7 @@ renderProg (Prog stmts) =
 
 renderStmt :: forall m as. Stmt -> Reader Ctx (HTML m as)
 renderStmt (DefRel x l) = do
+  ctx <- ask
   labels <-
     [ HH.div [] <$> ([ renderPunc "relation" ] # sequence)
     , HH.div [] <$>
@@ -44,7 +45,18 @@ renderStmt (DefRel x l) = do
           ] # sequence
         )
     ] # sequence
-  renderStmt_template { labels, body: none }
+  body <-
+    if null ctx.props then
+      pure none
+    else pure
+      <$> HH.div
+        [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ]
+      <$>
+        ( [ renderPunc "known instances:"
+          , HH.ul [] <$> (ctx.props # foldMap (renderProp >>> map (\html -> HH.li [] [ html ]) >>> pure) # sequence)
+          ] # sequence
+        )
+  renderStmt_template { labels, body }
 renderStmt (DefRule x r) = do
   labels <-
     [ HH.div [] <$> ([ renderPunc "rule" ] # sequence)

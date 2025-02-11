@@ -29,11 +29,12 @@ import Halogen.HTML as HH
 -- types
 --------------------------------------------------------------------------------
 
-type M m = (ReaderT (Ctx m) (StateT Env (ExceptT Error m)))
+type M m = ReaderT (Ctx m) (StateT Env (ExceptT Error m))
 
 type Ctx m =
   { relLats :: Map Name Lat
   , rules :: Map Name Rule
+  , set_props :: List Prop -> m Unit
   , trace :: PlainHTML -> m Unit
   }
 
@@ -43,6 +44,13 @@ type Env =
   }
 
 type Error = Array PlainHTML
+
+set_props :: forall m. Monad m => List Prop -> M m Unit
+set_props props = do
+  modify_ _ { props = props }
+  ctx <- ask
+  ctx.set_props props # lift # lift # lift
+  pure unit
 
 trace :: forall m. Monad m => PlainHTML -> M m Unit
 trace msg = do
@@ -58,6 +66,7 @@ main
    . Monad m
   => { prog :: Prog
      , gas :: Int
+     , set_props :: List Prop -> m Unit
      , trace :: PlainHTML -> m Unit
      }
   -> ExceptT Error m
@@ -73,6 +82,7 @@ main args = do
       # flip runReaderT
           { relLats
           , rules
+          , set_props: args.set_props
           , trace: args.trace
           }
       # flip execStateT
@@ -95,15 +105,12 @@ loop = do
   new_props :: List Prop <- map fold do
     ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(_rule_name /\ Rule rule) -> do
       Rule rule # applyRule # flip runReaderT env.props
-  new /\ props' :: Boolean /\ List Prop <- new_props # flip foldM (true /\ none) \(new /\ props') p -> do
+  new /\ props' :: Boolean /\ List Prop <- new_props # flip foldM (false /\ none) \(new /\ props') p -> do
     new' /\ props'' <- insertProp p props'
     pure $ (new || new') /\ props''
-  modify_ _
-    { props = props'
-    , gas = env.gas - 1
-    }
-  trace $ HH.text "begin loop"
-  loop # when new
+  set_props props'
+  modify_ _ { gas = env.gas - 1 }
+  when new loop
 
 applyRule :: forall m. Monad m => Rule -> ReaderT (List Prop) (M m) (List Prop)
 applyRule (Rule rule) = do
@@ -213,7 +220,7 @@ latCompare_Prop (Prop r1 a1) (Prop r2 a2) = do
       Nothing -> pure $ empty /\ Nothing
       Just sigma -> pure $ sigma /\ lo
 
-type LatCompareM' m = WriterT (Sys) (M m)
+type LatCompareM' m = WriterT Sys (M m)
 
 latCompare_Term :: forall m. Monad m => Lat -> Term -> Term -> LatCompareM' m LatOrdering
 
