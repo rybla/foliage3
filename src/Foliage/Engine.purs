@@ -99,22 +99,26 @@ loop :: forall m. Monad m => M m Unit
 loop = do
   ctx <- ask
   env <- get
-  trace $ HH.text $ "begin loop; gas = " <> show env.gas
+  trace $ HH.text $ "loop where gas = " <> show env.gas
   when (env.gas <= 0) do
     throwError [ HH.text "out of gas" ]
   new_props :: List Prop <- map fold do
     ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(_rule_name /\ Rule rule) -> do
       Rule rule # applyRule # flip runReaderT env.props
-  new /\ props' :: Boolean /\ List Prop <- new_props # flip foldM (false /\ none) \(new /\ props') p -> do
+  trace $ HH.text $ "new_props = " <> show new_props
+  new /\ props' :: Boolean /\ List Prop <- new_props # flip foldM (true /\ none) \(new /\ props') p -> do
     new' /\ props'' <- insertProp p props'
+    trace $ HH.text $ "insertProp " <> show p <> " " <> show props' <> " -> " <> show new' <> " /\\ " <> show props''
     pure $ (new || new') /\ props''
+  trace $ HH.text $ "new = " <> show new
+  trace $ HH.text $ "props' = " <> show props'
   set_props props'
   modify_ _ { gas = env.gas - 1 }
   when new loop
 
 applyRule :: forall m. Monad m => Rule -> ReaderT (List Prop) (M m) (List Prop)
 applyRule (Rule rule) = do
-  lift $ trace $ HH.text $ "apply rule " <> show (Rule rule)
+  lift $ trace $ HH.text $ "applyRule " <> show (Rule rule)
   case rule.hyps of
     Nil -> pure $ singleton rule.prop
     Cons (PropHyp hyp) hyps -> do
@@ -148,12 +152,14 @@ applyRule (Rule rule) = do
 -- • otherwise, yields `p : props`
 -- TODO: implement more efficiently
 insertProp :: forall m. Monad m => Prop -> List Prop -> M m (Boolean /\ List Prop)
-insertProp p = flip foldM (true /\ none) \(new /\ props) q -> do
-  p `latCompare_Prop` q >>= case _ of
-    _ /\ Nothing -> pure $ new /\ (q : props)
-    _ /\ Just LT -> pure $ false /\ (q : props)
-    _ /\ Just EQ -> pure $ false /\ props
-    _ /\ Just GT -> pure $ new /\ props
+insertProp p props = go # map \(new /\ props') -> new /\ (p : props')
+  where
+  go = props # flip foldM (true /\ none) \(new /\ props') q -> do
+    p `latCompare_Prop` q >>= case _ of
+      _ /\ Nothing -> pure $ new /\ (q : props')
+      _ /\ Just LT -> pure $ false /\ (q : props')
+      _ /\ Just EQ -> pure $ false /\ props'
+      _ /\ Just GT -> pure $ new /\ props'
 
 --------------------------------------------------------------------------------
 -- unify

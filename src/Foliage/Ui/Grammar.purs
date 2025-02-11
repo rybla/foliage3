@@ -53,7 +53,18 @@ renderStmt (DefRel x l) = do
         [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ]
       <$>
         ( [ renderPunc "known instances:"
-          , HH.ul [] <$> (ctx.props # foldMap (renderProp >>> map (\html -> HH.li [] [ html ]) >>> pure) # sequence)
+          , HH.ul
+              [ css do tell [ "padding-left: 1em" ] ] <$>
+              ( ctx.props
+                  -- # foldMap (renderProp >>> map (\html -> HH.li [] [ html ]) >>> pure)
+                  # foldMap
+                      ( \prop@(Prop (Rel x') _) ->
+                          if x /= x' then []
+                          else
+                            prop # renderProp # map (\html -> HH.li [] [ html ]) # pure
+                      )
+                  # sequence
+              )
           ] # sequence
         )
   renderStmt_template { labels, body }

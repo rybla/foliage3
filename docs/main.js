@@ -3915,14 +3915,14 @@
     };
   }();
   var showList = function(dictShow) {
-    var show7 = show(dictShow);
+    var show9 = show(dictShow);
     return {
       show: function(v) {
         if (v instanceof Nil) {
           return "Nil";
         }
         ;
-        return "(" + (intercalate2(" : ")(map8(show7)(v)) + " : Nil)");
+        return "(" + (intercalate2(" : ")(map8(show9)(v)) + " : Nil)");
       }
     };
   };
@@ -5621,10 +5621,10 @@
     }
   };
   var genericShowArgsArgument = function(dictShow) {
-    var show7 = show(dictShow);
+    var show9 = show(dictShow);
     return {
       genericShowArgs: function(v) {
-        return [show7(v)];
+        return [show9(v)];
       }
     };
   };
@@ -7527,12 +7527,12 @@
   var fromFoldable3 = /* @__PURE__ */ fromFoldable(foldableArray);
   var prog = /* @__PURE__ */ function() {
     var relP = new Name("P");
-    return new Prog(fromFoldable3([new DefRel(relP, NatLat.value), new DefRule(new Name("R1"), new Rule({
-      hyps: fromFoldable3([new PropHyp(new Prop(new Rel(relP), new DataTerm(new NatTerm(0))))]),
-      prop: new Prop(new Rel(relP), new DataTerm(new NatTerm(1)))
-    })), new DefRule(new Name("R2"), new Rule({
+    return new Prog(fromFoldable3([new DefRel(relP, NatLat.value), new DefRule(new Name("P(0)"), new Rule({
       hyps: fromFoldable3([]),
       prop: new Prop(new Rel(relP), new DataTerm(new NatTerm(0)))
+    })), new DefRule(new Name("P(0) => P(1)"), new Rule({
+      hyps: fromFoldable3([new PropHyp(new Prop(new Rel(relP), new DataTerm(new NatTerm(0))))]),
+      prop: new Prop(new Rel(relP), new DataTerm(new NatTerm(1)))
     }))]));
   }();
 
@@ -8874,6 +8874,8 @@
   var fold2 = /* @__PURE__ */ fold(foldableList)(monoidList);
   var show4 = /* @__PURE__ */ show(showProp);
   var show5 = /* @__PURE__ */ show(showInt);
+  var show6 = /* @__PURE__ */ show(/* @__PURE__ */ showList(showProp));
+  var show7 = /* @__PURE__ */ show(showBoolean);
   var unify_Term = function(dictMonad) {
     var monadReaderT2 = monadReaderT(monadStateT(monadExceptT(dictMonad)));
     var pure15 = pure(applicativeMaybeT(monadReaderT2));
@@ -8938,7 +8940,7 @@
         });
       }
       ;
-      throw new Error("Failed pattern match at Foliage.Engine (line 196, column 1 - line 196, column 57): " + [v.constructor.name]);
+      throw new Error("Failed pattern match at Foliage.Engine (line 202, column 1 - line 202, column 57): " + [v.constructor.name]);
     };
   };
   var subst_Prop = function(dictMonad) {
@@ -8974,7 +8976,7 @@
         return map25(CondHyp.create)(subst_Term1(v.value0));
       }
       ;
-      throw new Error("Failed pattern match at Foliage.Engine (line 185, column 1 - line 185, column 54): " + [v.constructor.name]);
+      throw new Error("Failed pattern match at Foliage.Engine (line 191, column 1 - line 191, column 54): " + [v.constructor.name]);
     };
   };
   var subst_Rule = function(dictMonad) {
@@ -9040,14 +9042,14 @@
                 });
               }
               ;
-              throw new Error("Failed pattern match at Foliage.Engine (line 275, column 46 - line 279, column 75): " + [v3.constructor.name]);
+              throw new Error("Failed pattern match at Foliage.Engine (line 281, column 46 - line 285, column 75): " + [v3.constructor.name]);
             });
           }
           ;
-          throw new Error("Failed pattern match at Foliage.Engine (line 267, column 33 - line 279, column 75): " + [v2.constructor.name]);
+          throw new Error("Failed pattern match at Foliage.Engine (line 273, column 33 - line 285, column 75): " + [v2.constructor.name]);
         }
         ;
-        throw new Error("Failed pattern match at Foliage.Engine (line 265, column 3 - line 265, column 34): " + [v.constructor.name, v1.constructor.name]);
+        throw new Error("Failed pattern match at Foliage.Engine (line 271, column 3 - line 271, column 34): " + [v.constructor.name, v1.constructor.name]);
       };
     };
     var go2 = function(sigma) {
@@ -9060,8 +9062,8 @@
           });
         };
       })(sigma))(function(sigma$prime) {
-        var $382 = notEq2(sigma)(sigma$prime);
-        if ($382) {
+        var $393 = notEq2(sigma)(sigma$prime);
+        if ($393) {
           return go2(sigma$prime);
         }
         ;
@@ -9084,16 +9086,16 @@
     var pure15 = pure(applicativeReaderT(applicativeStateT(monadExceptT2)));
     return function(props) {
       return discard13(modify_4(function(v) {
-        var $383 = {};
-        for (var $384 in v) {
-          if ({}.hasOwnProperty.call(v, $384)) {
-            $383[$384] = v[$384];
+        var $394 = {};
+        for (var $395 in v) {
+          if ({}.hasOwnProperty.call(v, $395)) {
+            $394[$395] = v[$395];
           }
           ;
         }
         ;
-        $383.props = props;
-        return $383;
+        $394.props = props;
+        return $394;
       }))(function() {
         return bind8(ask3)(function(ctx) {
           return discard13(lift42(lift52(lift6(ctx.set_props(props)))))(function() {
@@ -9160,7 +9162,7 @@
                 return pure15(new Just(invert(v3.value0)));
               }
               ;
-              throw new Error("Failed pattern match at Foliage.Engine (line 249, column 31 - line 251, column 37): " + [v3.constructor.name]);
+              throw new Error("Failed pattern match at Foliage.Engine (line 255, column 31 - line 257, column 37): " + [v3.constructor.name]);
             });
           }
           ;
@@ -9190,8 +9192,8 @@
     var solveSysForSubst1 = solveSysForSubst(dictMonad);
     return function(v) {
       return function(v1) {
-        var $409 = eq12(v.value0)(v1.value0);
-        if ($409) {
+        var $420 = eq12(v.value0)(v1.value0);
+        if ($420) {
           return pure15(new Tuple(empty9, Nothing.value));
         }
         ;
@@ -9206,7 +9208,7 @@
                 return pure15(new Tuple(v3.value0, v2.value0));
               }
               ;
-              throw new Error("Failed pattern match at Foliage.Engine (line 219, column 42 - line 221, column 39): " + [v3.constructor.name]);
+              throw new Error("Failed pattern match at Foliage.Engine (line 225, column 42 - line 227, column 39): " + [v3.constructor.name]);
             });
           });
         });
@@ -9219,30 +9221,36 @@
     var bind8 = bind(bindReaderT(bindStateT(monadExceptT2)));
     var latCompare_Prop1 = latCompare_Prop(dictMonad);
     var pure15 = pure(applicativeReaderT(applicativeStateT(monadExceptT2)));
+    var map25 = map(functorReaderT(functorStateT(functorExceptT(dictMonad.Bind1().Apply0().Functor0()))));
     return function(p2) {
-      return flip(foldM1)(new Tuple(true, none3))(function(v) {
-        return function(q2) {
-          return bind8(latCompare_Prop1(p2)(q2))(function(v1) {
-            if (v1.value1 instanceof Nothing) {
-              return pure15(new Tuple(v.value0, new Cons(q2, v.value1)));
-            }
-            ;
-            if (v1.value1 instanceof Just && v1.value1.value0 instanceof LT) {
-              return pure15(new Tuple(false, new Cons(q2, v.value1)));
-            }
-            ;
-            if (v1.value1 instanceof Just && v1.value1.value0 instanceof EQ) {
-              return pure15(new Tuple(false, v.value1));
-            }
-            ;
-            if (v1.value1 instanceof Just && v1.value1.value0 instanceof GT) {
-              return pure15(new Tuple(v.value0, v.value1));
-            }
-            ;
-            throw new Error("Failed pattern match at Foliage.Engine (line 152, column 29 - line 156, column 40): " + [v1.constructor.name]);
-          });
-        };
-      });
+      return function(props) {
+        var go2 = flip(foldM1)(new Tuple(true, none3))(function(v) {
+          return function(q2) {
+            return bind8(latCompare_Prop1(p2)(q2))(function(v1) {
+              if (v1.value1 instanceof Nothing) {
+                return pure15(new Tuple(v.value0, new Cons(q2, v.value1)));
+              }
+              ;
+              if (v1.value1 instanceof Just && v1.value1.value0 instanceof LT) {
+                return pure15(new Tuple(false, new Cons(q2, v.value1)));
+              }
+              ;
+              if (v1.value1 instanceof Just && v1.value1.value0 instanceof EQ) {
+                return pure15(new Tuple(false, v.value1));
+              }
+              ;
+              if (v1.value1 instanceof Just && v1.value1.value0 instanceof GT) {
+                return pure15(new Tuple(v.value0, v.value1));
+              }
+              ;
+              throw new Error("Failed pattern match at Foliage.Engine (line 158, column 31 - line 162, column 43): " + [v1.constructor.name]);
+            });
+          };
+        })(props);
+        return map25(function(v) {
+          return new Tuple(v.value0, new Cons(p2, v.value1));
+        })(go2);
+      };
     };
   };
   var applyRule = function(dictMonad) {
@@ -9261,7 +9269,7 @@
     var unify1 = unify(dictMonad);
     var subst_Rule1 = subst_Rule(dictMonad);
     return function(v) {
-      return discard13(lift42(trace1(text("apply rule " + show32(new Rule(v.value0))))))(function() {
+      return discard13(lift42(trace1(text("applyRule " + show32(new Rule(v.value0))))))(function() {
         if (v.value0.hyps instanceof Nil) {
           return pure15(singleton8(v.value0.prop));
         }
@@ -9288,7 +9296,7 @@
                     });
                   }
                   ;
-                  throw new Error("Failed pattern match at Foliage.Engine (line 126, column 47 - line 137, column 30): " + [v1.constructor.name]);
+                  throw new Error("Failed pattern match at Foliage.Engine (line 130, column 47 - line 141, column 30): " + [v1.constructor.name]);
                 });
               });
             })(props));
@@ -9309,7 +9317,7 @@
           }));
         }
         ;
-        throw new Error("Failed pattern match at Foliage.Engine (line 118, column 3 - line 144, column 44): " + [v.value0.hyps.constructor.name]);
+        throw new Error("Failed pattern match at Foliage.Engine (line 122, column 3 - line 148, column 44): " + [v.value0.hyps.constructor.name]);
       });
     };
   };
@@ -9335,32 +9343,40 @@
     var modify_4 = modify_2(monadStateReaderT2);
     return bind8(ask(monadAskReaderT(monadStateT2)))(function(ctx) {
       return bind8(get4)(function(env) {
-        return discard13(trace1(text("begin loop; gas = " + show5(env.gas))))(function() {
+        return discard13(trace1(text("loop where gas = " + show5(env.gas))))(function() {
           return discard13(when4(env.gas <= 0)(throwError3([text("out of gas")])))(function() {
             return bind8(map25(fold2)(traverse22(function(v) {
               return flip(runReaderT)(env.props)(applyRule1(new Rule(v.value1.value0)));
             })(toUnfoldable4(ctx.rules))))(function(v) {
-              return bind8(flip(foldM1)(new Tuple(false, none3))(function(v1) {
-                return function(p2) {
-                  return bind8(insertProp1(p2)(v1.value1))(function(v2) {
-                    return pure15(new Tuple(v1.value0 || v2.value0, v2.value1));
-                  });
-                };
-              })(v))(function(v1) {
-                return discard13(set_props1(v1.value1))(function() {
-                  return discard13(modify_4(function(v2) {
-                    var $461 = {};
-                    for (var $462 in v2) {
-                      if ({}.hasOwnProperty.call(v2, $462)) {
-                        $461[$462] = v2[$462];
-                      }
-                      ;
-                    }
-                    ;
-                    $461.gas = env.gas - 1 | 0;
-                    return $461;
-                  }))(function() {
-                    return when4(v1.value0)(loop(dictMonad));
+              return discard13(trace1(text("new_props = " + show6(v))))(function() {
+                return bind8(flip(foldM1)(new Tuple(true, none3))(function(v1) {
+                  return function(p2) {
+                    return bind8(insertProp1(p2)(v1.value1))(function(v2) {
+                      return discard13(trace1(text("insertProp " + (show4(p2) + (" " + (show6(v1.value1) + (" -> " + (show7(v2.value0) + (" /\\ " + show6(v2.value1))))))))))(function() {
+                        return pure15(new Tuple(v1.value0 || v2.value0, v2.value1));
+                      });
+                    });
+                  };
+                })(v))(function(v1) {
+                  return discard13(trace1(text("new = " + show7(v1.value0))))(function() {
+                    return discard13(trace1(text("props' = " + show6(v1.value1))))(function() {
+                      return discard13(set_props1(v1.value1))(function() {
+                        return discard13(modify_4(function(v2) {
+                          var $475 = {};
+                          for (var $476 in v2) {
+                            if ({}.hasOwnProperty.call(v2, $476)) {
+                              $475[$476] = v2[$476];
+                            }
+                            ;
+                          }
+                          ;
+                          $475.gas = env.gas - 1 | 0;
+                          return $475;
+                        }))(function() {
+                          return when4(v1.value0)(loop(dictMonad));
+                        });
+                      });
+                    });
                   });
                 });
               });
@@ -9410,7 +9426,7 @@
   var map15 = /* @__PURE__ */ map(/* @__PURE__ */ functorReaderT(functorIdentity));
   var pure1 = /* @__PURE__ */ pure(applicativeArray);
   var sequence2 = /* @__PURE__ */ sequence(traversableArray)(applicativeReaderT2);
-  var show6 = /* @__PURE__ */ show(showBoolean);
+  var show8 = /* @__PURE__ */ show(showBoolean);
   var show12 = /* @__PURE__ */ show(showInt);
   var bindReaderT2 = /* @__PURE__ */ bindReaderT(bindIdentity);
   var bindFlipped4 = /* @__PURE__ */ bindFlipped(bindReaderT2);
@@ -9423,6 +9439,7 @@
   var none1 = /* @__PURE__ */ none(unfoldableMaybe);
   var map22 = /* @__PURE__ */ map(functorFn);
   var pure23 = /* @__PURE__ */ pure(applicativeMaybe);
+  var notEq3 = /* @__PURE__ */ notEq(eqName);
   var fromFoldable4 = /* @__PURE__ */ fromFoldable2(foldableList);
   var traverse3 = /* @__PURE__ */ traverse(traversableList)(applicativeReaderT2);
   var renderStmt_template = function(v) {
@@ -9468,7 +9485,7 @@
       return map15(fold12)(sequence2([sequence2([renderKeyword("Opposite"), renderPunc("(")]), renderLat(v.value0), sequence2([renderPunc(")")])]));
     }
     ;
-    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 122, column 1 - line 122, column 64): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 133, column 1 - line 133, column 64): " + [v.constructor.name]);
   };
   var renderTerm = function(v) {
     if (v instanceof DataTerm && v.value0 instanceof UnitTerm) {
@@ -9476,7 +9493,7 @@
     }
     ;
     if (v instanceof DataTerm && v.value0 instanceof BoolTerm) {
-      return renderKeyword(show6(v.value0.value0));
+      return renderKeyword(show8(v.value0.value0));
     }
     ;
     if (v instanceof DataTerm && v.value0 instanceof NatTerm) {
@@ -9487,7 +9504,7 @@
       return renderName(v.value0);
     }
     ;
-    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 137, column 1 - line 137, column 58): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 148, column 1 - line 148, column 58): " + [v.constructor.name]);
   };
   var renderProp = function(v) {
     return bindFlipped4(renderLine)(sequence2([renderRel(v.value0), renderPunc("("), renderTerm(v.value1), renderPunc(")")]));
@@ -9508,11 +9525,11 @@
       return bindFlipped4(renderLine)(sequence2([renderPunc("if"), renderTerm(v.value0)]));
     }
     ;
-    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 102, column 1 - line 102, column 56): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 113, column 1 - line 113, column 56): " + [v.constructor.name]);
   };
   var renderRule = function(v) {
-    return map15(div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))]))(sequence2(fold12([foldMap4(function($84) {
-      return pure1(renderHyp($84));
+    return map15(div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))]))(sequence2(fold12([foldMap4(function($91) {
+      return pure1(renderHyp($91));
     })(v.value0.hyps), [pure8(div2([css(tell3(["height: 0.1em", "background-color: black"]))])([]))], [renderProp(v.value0.prop)]])));
   };
   var renderStmt = function(v) {
@@ -9520,19 +9537,21 @@
       return bind4(ask2)(function(ctx) {
         return bind4(sequence2([map15(div2([]))(sequence2([renderPunc("relation")])), map15(div2([]))(sequence2([bindFlipped4(renderLine)(fold22([sequence2([renderName(v.value0), renderPunc("(")]), renderLat(v.value1), sequence2([renderPunc(")")])]))]))]))(function(labels9) {
           return bind4(function() {
-            var $77 = $$null4(ctx.props);
-            if ($77) {
+            var $79 = $$null4(ctx.props);
+            if ($79) {
               return pure8(none1);
             }
             ;
-            return map15(map22(pure23)(div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))])))(sequence2([renderPunc("known instances:"), map15(ul([]))(sequence2(foldMap4(function() {
-              var $85 = map15(function(html2) {
+            return map15(map22(pure23)(div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))])))(sequence2([renderPunc("known instances:"), map15(ul([css(tell3(["padding-left: 1em"]))]))(sequence2(foldMap4(function(v1) {
+              var $81 = notEq3(v.value0)(v1.value0.value0);
+              if ($81) {
+                return [];
+              }
+              ;
+              return pure1(map15(function(html2) {
                 return li([])([html2]);
-              });
-              return function($86) {
-                return pure1($85(renderProp($86)));
-              };
-            }())(ctx.props)))]));
+              })(renderProp(v1)));
+            })(ctx.props)))]));
           }())(function(body2) {
             return renderStmt_template({
               labels: labels9,

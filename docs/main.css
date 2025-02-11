@@ -7,3 +7,9 @@ body {
 body {
   background-color: rgb(252, 245, 224);
 }
+
+ul,
+li {
+  margin: 0;
+  padding: 0;
+}
