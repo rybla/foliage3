@@ -115,7 +115,7 @@ renderRule (Rule rule) =
 
 renderHyp :: forall m. Monad m => Hyp -> HTML m
 renderHyp (PropHyp p) = renderProp p
-renderHyp (CompHyp x c) = renderLine [ renderName x, renderPunc "<-", renderComp c ]
+renderHyp (CompHyp x c) = renderLine [ renderName x, renderPunc "←", renderComp c ]
 renderHyp (CondHyp a) = renderLine [ renderPunc "if", renderTerm a ]
 
 renderComp :: forall m. Monad m => Comp -> HTML m
@@ -147,7 +147,7 @@ renderTerm (VarTerm x) = renderName x
 renderName :: forall m. Monad m => Name -> HTML m
 renderName x =
   HH.div
-    [ css do tell [ "color: blue", "text-decoration: underline" ] ]
+    [ css do tell [ "color: blue" ] ]
     [ HH.text $ fromNameToString x ]
 
 renderKeyword :: forall m. Monad m => String -> HTML m

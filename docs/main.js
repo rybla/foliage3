@@ -6417,7 +6417,7 @@
   };
   var renderName = function(dictMonad) {
     return function(x) {
-      return div2([css(tell3(["color: blue", "text-decoration: underline"]))])([text(fromNameToString(x))]);
+      return div2([css(tell3(["color: blue"]))])([text(fromNameToString(x))]);
     };
   };
   var renderRel = function(dictMonad) {
