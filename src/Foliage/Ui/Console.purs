@@ -41,7 +41,7 @@ component = H.mkComponent { initialState, eval, render }
   render state =
     HH.div
       [ css do
-          tell [ "flex-grow: 0", "flex-shrink: 1", "width: 40%" ]
+          tell [ "flex-grow: 0", "flex-shrink: 1", "width: 50%" ]
           tell [ "display: flex", "flex-direction: column", "gap: 0.5em", "padding: 0.5em" ]
       ]
       [ HH.div

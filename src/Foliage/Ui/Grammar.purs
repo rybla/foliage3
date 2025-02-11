@@ -12,6 +12,7 @@ import Data.Maybe (Maybe, maybe)
 import Data.Traversable (sequence, traverse)
 import Data.Unfoldable (none)
 import Data.Variant (Variant)
+import Foliage.Pretty (pretty)
 import Foliage.Utility (css)
 import Halogen.HTML as HH
 
@@ -133,7 +134,7 @@ renderRel (Rel x) = renderName x
 renderLat :: forall m as. Lat -> Reader Ctx (Array (HTML m as))
 renderLat UnitLat = renderKeyword "Unit" # map pure
 renderLat BoolLat = renderKeyword "Bool" # map pure
-renderLat NatLat = renderKeyword "Nat" # map pure
+renderLat IntLat = renderKeyword "Int" # map pure
 renderLat (DiscreteLat l) =
   [ [ renderKeyword "Discrete", renderPunc "(" ] # sequence
   , renderLat l
@@ -148,7 +149,7 @@ renderLat (OppositeLat l) =
 renderTerm :: forall m as. Term -> Reader Ctx (HTML m as)
 renderTerm (DataTerm UnitTerm) = renderKeyword "unit"
 renderTerm (DataTerm (BoolTerm b)) = renderKeyword (show b)
-renderTerm (DataTerm (NatTerm n)) = renderKeyword (show n)
+renderTerm (DataTerm (IntTerm n)) = renderKeyword (show n)
 renderTerm (VarTerm x) = renderName x
 
 renderName :: forall m as. Name -> Reader Ctx (HTML m as)
@@ -156,7 +157,7 @@ renderName x =
   pure
     $ HH.div
         [ css do tell [ "color: blue" ] ]
-        [ HH.text $ fromNameToString x ]
+        [ HH.text $ pretty x ]
 
 renderKeyword :: forall m as. String -> Reader Ctx (HTML m as)
 renderKeyword s =

@@ -10,6 +10,7 @@ import Data.Either (Either(..))
 import Data.List (List)
 import Data.Unfoldable (none)
 import Data.Variant (match)
+import Effect.Aff.Class (class MonadAff)
 import Foliage.Engine as Engine
 import Foliage.Ui.Common (Message)
 import Foliage.Ui.Grammar (renderProg)
@@ -30,7 +31,7 @@ type State =
   , props :: List Prop
   }
 
-component :: forall query m. Monad m => H.Component query Input Output m
+component :: forall query m. MonadAff m => H.Component query Input Output m
 component = H.mkComponent { initialState, eval, render }
   where
   initialState :: Input -> State
