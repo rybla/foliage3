@@ -5,10 +5,11 @@ import Prelude
 import Control.Monad.Writer (tell)
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
+import Foliage.Example.Ex1 as Ex1
 import Foliage.Ui.Common (ConsoleQuery(..), Message)
 import Foliage.Ui.Console as Ui.Console
 import Foliage.Ui.Program as Ui.Program
-import Foliage.Utility (css, todo)
+import Foliage.Utility (css)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
@@ -33,6 +34,9 @@ component = H.mkComponent { initialState, eval, render }
   render _ =
     HH.div
       [ css do tell [ "display: flex", "flex-direction: row", "height: 100vh", "width: 100vw" ] ]
-      [ HH.slot (Proxy @"program") unit Ui.Program.component {} MessageAction
+      [ HH.slot (Proxy @"program") unit Ui.Program.component
+          { prog: Ex1.prog
+          }
+          MessageAction
       , HH.slot (Proxy @"console") unit Ui.Console.component {} absurd
       ]

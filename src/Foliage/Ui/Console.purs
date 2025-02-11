@@ -41,7 +41,7 @@ component = H.mkComponent { initialState, eval, render }
   render state =
     HH.div
       [ css do
-          tell [ "flex-grow: 0", "flex-shrink: 1", "width: 400px" ]
+          tell [ "flex-grow: 0", "flex-shrink: 1", "width: 30%" ]
           tell [ "display: flex", "flex-direction: column", "gap: 0.5em", "padding: 0.5em" ]
       ]
       [ HH.div
@@ -55,7 +55,7 @@ component = H.mkComponent { initialState, eval, render }
           state.messages # foldMapWithIndex \i html ->
             [ Tuple (show i) $
                 HH.div
-                  [ css do tell [ "padding: 0.5em", "box-shadow: 0 0 0 1px black inset" ] ]
+                  [ css do tell [ "padding: 0.5em", "box-shadow: 0 0 0 1px black inset", "overflow-x: scroll" ] ]
                   [ html # HH.fromPlainHTML ]
             ]
       ]
