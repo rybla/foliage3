@@ -20,9 +20,16 @@ ul {
 }
 
 button {
-  background-color: rgb(8, 0, 255);
+  background-color: rgb(85, 79, 255);
   color: white;
   padding: 0.1em 0.5em;
   border: none;
   border-radius: 1em;
+  cursor: pointer;
+}
+
+select,
+option {
+  margin: 0;
+  padding: 0;
 }

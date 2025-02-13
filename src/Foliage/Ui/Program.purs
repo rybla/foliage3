@@ -8,15 +8,16 @@ import Control.Monad.Reader (runReader)
 import Control.Monad.State (gets)
 import Control.Monad.Writer (tell)
 import Data.Argonaut.Decode (fromJsonString)
+import Data.Argonaut.Encode (toJsonString)
 import Data.Either (Either(..), fromRight')
 import Data.Foldable (fold)
 import Data.List (List)
 import Data.Maybe (Maybe, maybe)
-import Data.Newtype (wrap)
+import Data.Newtype (unwrap, wrap)
 import Data.Tuple (Tuple(..))
 import Data.Unfoldable (none)
 import Data.Variant (Variant, match)
-import Effect.Aff (Milliseconds(..))
+import Effect.Aff (Milliseconds)
 import Effect.Aff.Class (class MonadAff)
 import Foliage.Engine as Engine
 import Foliage.Ui.Common (Message, Error)
@@ -27,6 +28,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Elements.Keyed as HHK
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Properties as HP
 
 type Input =
   { prog :: Prog
@@ -102,6 +104,7 @@ component = H.mkComponent { initialState, eval, render }
     , stop: \_ -> do
         modify_ _ { stopped = true }
     , set_delay_duration: \delay_duration -> modify_ _ { delay_duration = delay_duration # wrap }
+    , set_initial_gas: \initial_gas -> modify_ _ { initial_gas = initial_gas }
     }
 
   render state =
@@ -148,23 +151,30 @@ component = H.mkComponent { initialState, eval, render }
                     , HH.div [] [ HH.button [ HE.onClick $ const $ inj @"stop" unit ] [ HH.text "stop" ] ]
                     ]
               }
-        , Tuple "params"
-            let
-              item_style = do
-                tell [ "padding: 0.25em 0.5em", "border: 0.1em solid black", "border-radius: 1em" ]
-            in
-              HH.div
-                [ css do tell [ "padding: 0.5em", "display: flex", "flex-direction: row", "gap: 1em", "flex-wrap: wrap" ] ]
-                [ HH.div [ css item_style ] [ HH.text $ "initial_gas = " <> show state.initial_gas ]
-                , HH.div
-                    [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ]
-                    [ HH.div [] [ HH.text "delay_duration =" ]
-                    , HH.select [ HE.onValueChange \s -> inj @"set_delay_duration" (s # fromJsonString # fromRight' impossible) ]
-                        [ let delay = 0.0 in HH.option [] [ HH.text $ show delay <> "ms" ]
-                        , let delay = 100.0 in HH.option [] [ HH.text $ show delay <> "ms" ]
-                        ]
-                    ]
-                ]
+        , Tuple "params" $
+            HH.div
+              [ css do tell [ "padding: 0.5em", "display: flex", "flex-direction: row", "gap: 1em", "flex-wrap: wrap" ] ]
+              [ HH.div
+                  [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em", "align-items: center" ] ]
+                  [ HH.div [] [ HH.text "initial_gas =" ]
+                  , HH.select
+                      [ HE.onValueChange \s -> inj @"set_initial_gas" (s # fromJsonString # fromRight' impossible)
+                      , HP.value $ toJsonString state.initial_gas
+                      ] $
+                      [ 10, 100 ] # map \v ->
+                        HH.option [ HP.value $ toJsonString v ] [ HH.text $ show v <> "steps" ]
+                  ]
+              , HH.div
+                  [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em", "align-items: center" ] ]
+                  [ HH.div [] [ HH.text "delay_duration =" ]
+                  , HH.select
+                      [ HE.onValueChange \s -> inj @"set_delay_duration" (s # fromJsonString # fromRight' impossible)
+                      , HP.value $ toJsonString $ unwrap state.delay_duration
+                      ] $
+                      [ 0.0, 100.0, 500.0, 800.0, 1000.0 ] # map \v ->
+                        HH.option [ HP.value $ toJsonString v ] [ HH.text $ show v <> "ms" ]
+                  ]
+              ]
         , Tuple "prog" $
             HH.div
               [ css do

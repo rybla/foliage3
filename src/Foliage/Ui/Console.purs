@@ -2,8 +2,10 @@ module Foliage.Ui.Console where
 
 import Prelude
 
+import Control.Monad.State (modify_)
 import Control.Monad.Writer (tell)
 import Data.FoldableWithIndex (foldMapWithIndex)
+import Data.Variant (match)
 import Data.Lens ((%=))
 import Data.Lens.Record (prop)
 import Data.List (List)
@@ -13,10 +15,11 @@ import Data.Tuple (Tuple(..))
 import Data.Unfoldable (none)
 import Effect.Aff.Class (class MonadAff)
 import Foliage.Ui.Common (ConsoleQuery(..), Message)
-import Foliage.Utility (css)
+import Foliage.Utility (css, inj)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Elements.Keyed as HHK
+import Halogen.HTML.Events as HE
 import Type.Prelude (Proxy(..))
 
 type State =
@@ -31,7 +34,14 @@ component = H.mkComponent { initialState, eval, render }
     { messages: none }
 
   eval = H.mkEval H.defaultEval
-    { handleQuery = handleQuery }
+    { handleQuery = handleQuery
+    , handleAction = handleAction
+    }
+
+  handleAction = match
+    { clear: const do
+        modify_ _ { messages = none }
+    }
 
   handleQuery :: forall a. ConsoleQuery a -> _ (Maybe a)
   handleQuery (TellMessage msg a) = do
@@ -45,8 +55,11 @@ component = H.mkComponent { initialState, eval, render }
           tell [ "display: flex", "flex-direction: column", "gap: 0.5em", "padding: 0.5em" ]
       ]
       [ HH.div
-          [ css do tell [ "padding: 0.5em", "background-color: black", "color: white" ] ]
-          [ HH.text "console" ]
+          [ css do tell [ "padding: 0.5em", "background-color: black", "color: white", "display: flex", "flex-direction: row", "justify-content: space-between", "gap: 1em" ] ]
+          [ HH.div [] [ HH.text "console" ]
+          , HH.div [ css do tell [ "display: flex", "flex-direction: row", "gap: 1em" ] ]
+              [ HH.button [ HE.onClick $ const $ inj @"clear" unit ] [ HH.text "clear" ] ]
+          ]
       , HHK.div
           [ css do
               tell [ "display: flex", "flex-direction: column-reverse", "gap: 0.5em" ]
