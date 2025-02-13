@@ -5,21 +5,26 @@ import Prelude
 
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (runReader)
-import Control.Monad.State (gets)
+import Control.Monad.State (gets, put)
 import Control.Monad.Writer (tell)
 import Data.Argonaut.Decode (fromJsonString)
 import Data.Argonaut.Encode (toJsonString)
+import Data.Array (intercalate, intersperse)
+import Data.Array as Array
 import Data.Either (Either(..), fromRight')
 import Data.Foldable (fold)
 import Data.List (List)
-import Data.Maybe (Maybe, maybe)
+import Data.Maybe (Maybe, fromMaybe', maybe, maybe')
 import Data.Newtype (unwrap, wrap)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple.Nested (type (/\), (/\))
 import Data.Unfoldable (none)
 import Data.Variant (Variant, match)
 import Effect.Aff (Milliseconds)
 import Effect.Aff.Class (class MonadAff)
 import Foliage.Engine as Engine
+import Foliage.Example.Ex1 as Ex1
+import Foliage.Example.Ex2 as Ex2
 import Foliage.Ui.Common (Message, Error)
 import Foliage.Ui.Grammar as Ui.Grammar
 import Foliage.Utility (css, impossible, inj)
@@ -31,13 +36,13 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
 type Input =
-  { prog :: Prog
-  }
+  {}
 
 type Output = Message
 
 type State =
-  { prog :: Prog
+  { example_name :: String
+  , prog :: Prog
   , props :: List Prop
   , initial_gas :: Int
   , delay_duration :: Milliseconds
@@ -46,12 +51,21 @@ type State =
   , stopped :: Boolean
   }
 
+example_progs :: Array (String /\ Prog)
+example_progs =
+  [ "ex1" /\ Ex1.prog
+  , "ex2" /\ Ex2.prog
+  ]
+
 component :: forall query m. MonadAff m => H.Component query Input Output m
 component = H.mkComponent { initialState, eval, render }
   where
+  initial_example_name = "ex2"
+
   initialState :: Input -> State
   initialState input =
-    { prog: input.prog
+    { example_name: initial_example_name
+    , prog: example_progs # Array.find (fst >>> (_ == initial_example_name)) # maybe' impossible snd
     , props: none
     , initial_gas: 10
     , delay_duration: 800.0 # wrap
@@ -61,10 +75,13 @@ component = H.mkComponent { initialState, eval, render }
     }
 
   eval = H.mkEval H.defaultEval
-    { handleAction = handleAction }
+    { receive = inj @"receive" >>> pure
+    , handleAction = handleAction
+    }
 
   handleAction = match
-    { raise: \o -> do
+    { receive: initialState >>> put
+    , raise: \o -> do
         H.raise o
     , fixpoint: \_ -> do
         modify_ _
@@ -105,6 +122,9 @@ component = H.mkComponent { initialState, eval, render }
         modify_ _ { stopped = true }
     , set_delay_duration: \delay_duration -> modify_ _ { delay_duration = delay_duration # wrap }
     , set_initial_gas: \initial_gas -> modify_ _ { initial_gas = initial_gas }
+    , set_example: \k -> do
+        let prog = example_progs # Array.find (fst >>> (_ == k)) # maybe' impossible snd
+        modify_ _ { prog = prog }
     }
 
   render state =
@@ -122,8 +142,18 @@ component = H.mkComponent { initialState, eval, render }
         ]
         [ Tuple "title" $
             HH.div
-              [ css do tell [ "padding: 0.5em", "background-color: black", "color: white" ] ]
-              [ HH.text "program" ]
+              [ css do tell [ "padding: 0.5em", "background-color: black", "color: white", "display: flex", "flex-direction: row", "gap: 1em", "justify-content: space-between" ] ]
+              [ HH.div [] [ HH.text "program" ]
+              , HH.div
+                  [ css do tell [ "display: flex", "flex-direction: row", "gap: 1em" ] ]
+                  [ HH.select
+                      [ HE.onValueChange $ inj @"set_example"
+                      , HP.value state.example_name
+                      ] $
+                      example_progs # map \(k /\ _) ->
+                        HH.option [ HP.value k ] [ HH.text k ]
+                  ]
+              ]
         , Tuple "controls" $
             state.status # match
               { ready: const
@@ -140,8 +170,9 @@ component = H.mkComponent { initialState, eval, render }
                         ]
                       , state.result # maybe [] \result ->
                           [ HH.div
-                              [ css do tell [ "flex-grow: 1", "flex-shrink: 1" ] ]
-                              (result # map HH.fromPlainHTML)
+                              -- "flex-direction: row", "gap: 0.5em", "flex-wrap: wrap"
+                              [ css do tell [ "flex-grow: 1", "flex-shrink: 1", "display: flex" ] ]
+                              (result # map HH.fromPlainHTML # intersperse (HH.text " | "))
                           ]
                       ]
               , running: const $

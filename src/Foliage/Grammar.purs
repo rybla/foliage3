@@ -16,7 +16,7 @@ import Data.Set (Set)
 import Data.Set as Set
 import Data.Show.Generic (genericShow)
 import Data.Tuple.Nested (type (/\), (/\))
-import Foliage.Pretty (class Pretty, parens, pretty)
+import Foliage.Pretty (class Pretty, brackets, parens, pretty)
 import Foliage.Utility (prop)
 
 newtype Prog = Prog (List Stmt)
@@ -44,9 +44,9 @@ instance Show Stmt where
   show (DefFun x ps t _) = "DefFun " <> show x <> " " <> show ps <> " " <> show t <> " " <> "<fun>"
 
 instance Pretty Stmt where
-  pretty (DefRel x l) = "relation " <> pretty x <> " " <> parens (pretty l)
+  pretty (DefRel x l) = "relation " <> pretty x <> " " <> brackets (pretty l)
   pretty (DefRule x r) = "rule " <> pretty x <> " := " <> pretty r
-  pretty (DefFun x ps t _) = "fun " <> pretty x <> parens (ps # map (\(x /\ t) -> pretty x <> " : " <> pretty t) # intercalate ", ") <> " -> " <> pretty t <> " := " <> "<fun>"
+  pretty (DefFun x ps t _) = "fun " <> pretty x <> parens (ps # map (\(x' /\ t') -> pretty x' <> " : " <> pretty t') # intercalate ", ") <> " -> " <> pretty t <> " := " <> "<fun>"
 
 newtype Name = Name String
 
@@ -78,9 +78,6 @@ instance Pretty Comp where
 instance Eq Comp where
   eq x y = genericEq x y
 
-instance Ord Comp where
-  compare x y = genericCompare x y
-
 data Term
   = VarTerm Name
   | DataTerm DataTerm
@@ -99,9 +96,6 @@ instance Pretty Term where
 instance Eq Term where
   eq x y = genericEq x y
 
-instance Ord Term where
-  compare x y = genericCompare x y
-
 data DataTerm
   = UnitTerm
   | BoolTerm Boolean
@@ -119,9 +113,6 @@ instance Pretty DataTerm where
 
 instance Eq DataTerm where
   eq x y = genericEq x y
-
-instance Ord DataTerm where
-  compare x y = genericCompare x y
 
 data Typ
   = UnitTyp
@@ -143,13 +134,11 @@ instance Pretty Typ where
 instance Eq Typ where
   eq x y = genericEq x y
 
-instance Ord Typ where
-  compare x y = genericCompare x y
-
 data Lat
   = UnitLat
   | BoolLat
   | IntLat
+  | ProdLat ProdLatOrdering Lat Lat
   | DiscreteLat Lat -- everything is either equal or incomparable
   | OppositeLat Lat -- turn lattice upside-down
 
@@ -162,14 +151,25 @@ instance Pretty Lat where
   pretty UnitLat = "𝕌"
   pretty BoolLat = "𝔹"
   pretty IntLat = "ℤ"
+  pretty (ProdLat o a b) = "ℤ"
   pretty (DiscreteLat l) = "Discrete" <> parens (pretty l)
   pretty (OppositeLat l) = "Opposite" <> parens (pretty l)
 
 instance Eq Lat where
   eq x y = genericEq x y
 
-instance Ord Lat where
-  compare x y = genericCompare x y
+data ProdLatOrdering = LexicographicProdLatOrdering
+
+derive instance Generic ProdLatOrdering _
+
+instance Show ProdLatOrdering where
+  show x = genericShow x
+
+instance Pretty ProdLatOrdering where
+  pretty LexicographicProdLatOrdering = "lex"
+
+instance Eq ProdLatOrdering where
+  eq x y = genericEq x y
 
 newtype Rel = Rel Name
 
@@ -184,9 +184,6 @@ instance Pretty Rel where
 instance Eq Rel where
   eq x y = genericEq x y
 
-instance Ord Rel where
-  compare x y = genericCompare x y
-
 data Prop = Prop Rel Term
 
 derive instance Generic Prop _
@@ -195,13 +192,10 @@ instance Show Prop where
   show x = genericShow x
 
 instance Pretty Prop where
-  pretty (Prop r a) = pretty r <> " " <> parens (pretty a)
+  pretty (Prop r a) = pretty r <> " " <> brackets (pretty a)
 
 instance Eq Prop where
   eq x y = genericEq x y
-
-instance Ord Prop where
-  compare x y = genericCompare x y
 
 data Hyp
   = PropHyp Prop
@@ -221,9 +215,6 @@ instance Pretty Hyp where
 instance Eq Hyp where
   eq x y = genericEq x y
 
-instance Ord Hyp where
-  compare x y = genericCompare x y
-
 newtype Rule = Rule
   { hyps :: List Hyp
   , prop :: Prop
@@ -239,9 +230,6 @@ instance Pretty Rule where
 
 instance Eq Rule where
   eq x y = genericEq x y
-
-instance Ord Rule where
-  compare x y = genericCompare x y
 
 --------------------------------------------------------------------------------
 -- utilities

@@ -3,6 +3,7 @@ module Foliage.Ui.Grammar where
 import Foliage.Grammar
 import Prelude
 
+import Control.Applicative (pure)
 import Control.Monad.Reader (Reader, ask)
 import Control.Monad.Writer (tell)
 import Data.Array as Array
@@ -16,6 +17,7 @@ import Data.Variant (Variant)
 import Foliage.Pretty (pretty)
 import Foliage.Utility (bind', css)
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 
 type HTML m as = HH.ComponentHTML (Variant as) () m
 
@@ -35,7 +37,7 @@ prog (Prog stmts) =
 stmt :: forall m as. Stmt -> Reader Ctx (HTML m as)
 stmt (DefRel x l) = do
   ctx <- ask
-  label <- [ punc "relation", name x, punc "(", lat l, punc ")" ] # sequence # map fold # bind' line
+  label <- [ punc "relation", name x, punc "[", lat l, punc "]" ] # fold # bind' line
   body <-
     let
       m_props = ctx.props # foldMap case _ of
@@ -51,24 +53,24 @@ stmt (DefRel x l) = do
           <$>
             ( [ punc "known instances:"
               , pure [ HH.ul [] props ]
-              ] # sequence # map fold
+              ] # fold
             )
 
   stmt_template { label, body }
 stmt (DefRule x r) = do
-  label <- [ punc "rule", name x ] # sequence # map fold # bind' line
+  label <- [ punc "rule", name x ] # fold # bind' line
   body <- rule r
   stmt_template { label, body: pure body }
 stmt (DefFun x ps t _) = do
-  let params = ps # map (\(x' /\ t') -> [ name x', punc ":", typ t' ]) # intercalate [ punc "," ] # sequence # map fold
-  label <- [ punc "fun", name x, punc "(", params, punc ")", punc "→", typ t, punc ":=", punc "<fun>" ] # sequence # map fold # bind' line
+  let params = ps # map (\(x' /\ t') -> [ name x', punc ":", typ t' ]) # intercalate [ punc "," ] # fold
+  label <- [ punc "fun", name x, punc "(", params, punc ")", punc "→", typ t, punc ":=", punc "<fun>" ] # fold # bind' line
   stmt_template { label, body: none }
 
 typ :: forall m as. Typ -> Reader Ctx (Array (HTML m as))
 typ UnitTyp = kw "𝕌"
 typ BoolTyp = kw "𝔹"
 typ IntTyp = kw "ℤ"
-typ (ProdTyp a b) = [ punc "(", typ a, kw "×", typ b, punc ")" ] # sequence # map fold
+typ (ProdTyp a b) = [ punc "(", typ a, kw "×", typ b, punc ")" ] # fold
 
 stmt_template :: forall m as. { label :: HTML m as, body :: Maybe (HTML m as) } -> Reader Ctx (HTML m as)
 stmt_template { label, body } =
@@ -96,19 +98,19 @@ rule (Rule r) =
     ( [ r.hyps # foldMap (\h -> [ hyp h >>= line ] # sequence)
       , [ HH.div [ css do tell [ "height: 0.1em", "background-color: black" ] ] [] ] # pure
       , [ prop r.prop >>= line ] # sequence
-      ] # sequence # map fold
+      ] # fold
     )
 
 hyp :: forall m as. Hyp -> Reader Ctx (Array (HTML m as))
 hyp (PropHyp p) = prop p
-hyp (CompHyp x c) = [ name x, punc "←", comp c ] # sequence # map fold
-hyp (CondHyp a) = [ punc "if", term a ] # sequence # map fold
+hyp (CompHyp x c) = [ name x, punc "←", comp c ] # fold
+hyp (CondHyp a) = [ punc "if", term a ] # fold
 
 comp :: forall m as. Comp -> Reader Ctx (Array (HTML m as))
-comp (Invoke x args) = [ name x, punc "(", args # map term # intercalate (punc ","), punc ")" ] # sequence # map fold
+comp (Invoke x args) = [ name x, punc "(", args # map term # intercalate (punc ","), punc ")" ] # fold
 
 prop :: forall m as. Prop -> Reader Ctx (Array (HTML m as))
-prop (Prop r a) = [ rel r, punc "(", term a, punc ")" ] # sequence # map fold
+prop (Prop r a) = [ rel r, punc "[", term a, punc "]" ] # fold
 
 rel :: forall m as. Rel -> Reader Ctx (Array (HTML m as))
 rel (Rel x) = name x
@@ -117,15 +119,19 @@ lat :: forall m as. Lat -> Reader Ctx (Array (HTML m as))
 lat UnitLat = kw "Unit"
 lat BoolLat = kw "Bool"
 lat IntLat = kw "Int"
-lat (DiscreteLat l) = [ kw "Discrete", punc "(", lat l, punc ")" ] # sequence # map fold
-lat (OppositeLat l) = [ kw "Opposite", punc "(", lat l, punc ")" ] # sequence # map fold
+lat (ProdLat o a b) = [ punc "(", lat a, [ kw "×", sub (prodLatOrdering o) ] # fold # bind' span, lat b, punc ")" ] # fold
+lat (DiscreteLat l) = [ kw "Discrete", punc "(", lat l, punc ")" ] # fold
+lat (OppositeLat l) = [ kw "Opposite", punc "(", lat l, punc ")" ] # fold
+
+prodLatOrdering :: forall m as. ProdLatOrdering -> Reader Ctx (Array (HTML m as))
+prodLatOrdering LexicographicProdLatOrdering = kw "lex"
 
 term :: forall m as. Term -> Reader Ctx (Array (HTML m as))
 term (VarTerm x) = name x
 term (DataTerm UnitTerm) = kw "unit"
 term (DataTerm (BoolTerm b)) = kw (show b)
 term (DataTerm (IntTerm n)) = kw (show n)
-term (PairTerm a b) = [ punc "(", term a, punc " , ", term b, punc ")" ] # sequence # map fold
+term (PairTerm a b) = [ punc "(", term a, punc " , ", term b, punc ")" ] # fold
 
 name :: forall m as. Name -> Reader Ctx (Array (HTML m as))
 name x =
@@ -158,3 +164,8 @@ line xs =
       [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ]
       xs
 
+span :: forall m as. Array (HTML m as) -> Reader Ctx (Array (HTML m as))
+span = HH.span [ HP.classes [ HH.ClassName "inline-kids" ] ] >>> pure >>> pure
+
+sub :: forall m as. Reader Ctx (Array (HTML m as)) -> Reader Ctx (Array (HTML m as))
+sub = map \htmls -> [ HH.sub_ htmls ]

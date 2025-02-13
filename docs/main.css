@@ -33,3 +33,7 @@ option {
   margin: 0;
   padding: 0;
 }
+
+.inline-kids>* {
+  display: inline-block;
+}

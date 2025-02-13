@@ -9,7 +9,8 @@ import Control.Monad.Maybe.Trans (MaybeT, runMaybeT)
 import Control.Monad.Reader (ReaderT, ask, runReaderT)
 import Control.Monad.State (StateT, execStateT, get, modify_)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Writer (WriterT, runWriterT, tell)
+import Control.Monad.Writer (WriterT, execWriterT, runWriterT, tell)
+import Control.Plus (empty)
 import Data.Either (either)
 import Data.Foldable (foldM)
 import Data.List (List(..), (:))
@@ -145,7 +146,7 @@ applyRule (Rule rule) = do
         -- check if `prop` can satisfy `hyp`
         unify hyp prop # runMaybeT # lift >>= case _ of
           Nothing -> do
-            lift $ trace $ HH.text $ "✗ " <> pretty hyp
+            lift $ trace $ HH.text $ "✗ " <> pretty hyp <> " by " <> pretty prop
             pure none
           -- if it can, then update rest of the rule with resulting `sigma`,
           -- then apply the rest of the rule
@@ -191,11 +192,17 @@ insertProp p props = go # map \(new /\ props') -> new /\ (if new then p : props'
 
 -- unify p q = Just σ  <==>  σ p = q
 unify :: forall m. MonadAff m => Prop -> Prop -> MaybeT (M m) Subst
-unify (Prop _ p) (Prop _ q) = unify_Term p q
+unify (Prop r1 p) (Prop r2 q) | r1 == r2 = do
+  sys <- unify_Term p q # execWriterT
+  pure $ sys # Map.fromFoldable -- TODO: handle solving system
+unify _ _ = empty
 
-unify_Term :: forall m. MonadAff m => Term -> Term -> MaybeT (M m) Subst
-unify_Term (DataTerm a) (DataTerm b) | a == b = pure empty
-unify_Term (VarTerm x) q = pure $ Map.singleton x q
+unify_Term :: forall m. MonadAff m => Term -> Term -> WriterT (Array (Name /\ Term)) (MaybeT (M m)) Unit
+unify_Term (VarTerm x) q = tell [ x /\ q ]
+unify_Term (DataTerm a) (DataTerm b) | a == b = pure unit
+unify_Term (PairTerm x1 y1) (PairTerm x2 y2) = do
+  unify_Term x1 x2
+  unify_Term y1 y2
 unify_Term _ _ = empty
 
 --------------------------------------------------------------------------------
@@ -271,6 +278,13 @@ latCompare_Term UnitLat _ _ =
 latCompare_Term IntLat (DataTerm (IntTerm n1)) (DataTerm (IntTerm n2)) =
   pure $ Just $ compare n1 n2
 
+latCompare_Term (ProdLat LexicographicProdLatOrdering a b) (PairTerm x1 y1) (PairTerm x2 y2) =
+  latCompare_Term a x1 x2 >>= case _ of
+    Just LT -> pure $ Just LT
+    Just EQ -> latCompare_Term b y1 y2
+    Just GT -> pure $ Just GT
+    Nothing -> pure Nothing
+
 latCompare_Term (DiscreteLat l) a1 a2 =
   latCompare_Term l a1 a2 >>= case _ of
     Just EQ -> pure $ Just EQ
@@ -303,9 +317,10 @@ solveSysForSubst = init empty >=> go
     -- then unify `a` and `a'`,
     -- then append any resulting substitution from that to the rest of the system to be initialized
     Just a' -> do
-      unify_Term a a' # runMaybeT # lift >>= case _ of
+      unify_Term a a' # execWriterT # runMaybeT # lift >>= case _ of
         Nothing -> empty
-        Just sigma' -> do
+        Just sys' -> do
+          let sigma' = Map.fromFoldable sys' -- TODO: handle solving system
           a'' <- a # subst_Term # flip runReaderT { sigma: sigma' } # lift
           init (sigma # Map.insert x a'') (sys <> Map.toUnfoldable sigma')
 
