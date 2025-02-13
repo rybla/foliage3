@@ -21,6 +21,9 @@ todo msg = unsafeCrashWith $ "[TODO]\n" <> msg
 bug :: forall a. String -> a
 bug msg = unsafeCrashWith $ "[BUG]\n" <> msg
 
+impossible :: forall a. Unit -> a
+impossible _ = bug "impossible"
+
 css :: forall r i. Writer (Array String) Unit -> HP.IProp (style :: String | r) i
 css w = HP.style $ w # execWriter # Array.foldMap (_ <> "; ")
 

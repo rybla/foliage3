@@ -7,7 +7,8 @@ import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (runReader)
 import Control.Monad.State (gets)
 import Control.Monad.Writer (tell)
-import Data.Either (Either(..))
+import Data.Argonaut.Decode (fromJsonString)
+import Data.Either (Either(..), fromRight')
 import Data.Foldable (fold)
 import Data.List (List)
 import Data.Maybe (Maybe, maybe)
@@ -15,12 +16,12 @@ import Data.Newtype (wrap)
 import Data.Tuple (Tuple(..))
 import Data.Unfoldable (none)
 import Data.Variant (Variant, match)
-import Effect.Aff (Milliseconds)
+import Effect.Aff (Milliseconds(..))
 import Effect.Aff.Class (class MonadAff)
 import Foliage.Engine as Engine
 import Foliage.Ui.Common (Message, Error)
 import Foliage.Ui.Grammar as Ui.Grammar
-import Foliage.Utility (css, inj)
+import Foliage.Utility (css, impossible, inj)
 import Halogen (get, modify_)
 import Halogen as H
 import Halogen.HTML as HH
@@ -63,8 +64,6 @@ component = H.mkComponent { initialState, eval, render }
   handleAction = match
     { raise: \o -> do
         H.raise o
-    , stop: \_ -> do
-        modify_ _ { stopped = true }
     , fixpoint: \_ -> do
         modify_ _
           { status = inj @"running" unit
@@ -100,6 +99,9 @@ component = H.mkComponent { initialState, eval, render }
               , result = pure [ HH.text "success" ]
               , props = props
               }
+    , stop: \_ -> do
+        modify_ _ { stopped = true }
+    , set_delay_duration: \delay_duration -> modify_ _ { delay_duration = delay_duration # wrap }
     }
 
   render state =
@@ -154,7 +156,14 @@ component = H.mkComponent { initialState, eval, render }
               HH.div
                 [ css do tell [ "padding: 0.5em", "display: flex", "flex-direction: row", "gap: 1em", "flex-wrap: wrap" ] ]
                 [ HH.div [ css item_style ] [ HH.text $ "initial_gas = " <> show state.initial_gas ]
-                , HH.div [ css item_style ] [ HH.text $ "delay_duration = " <> show state.delay_duration ]
+                , HH.div
+                    [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ]
+                    [ HH.div [] [ HH.text "delay_duration =" ]
+                    , HH.select [ HE.onValueChange \s -> inj @"set_delay_duration" (s # fromJsonString # fromRight' impossible) ]
+                        [ let delay = 0.0 in HH.option [] [ HH.text $ show delay <> "ms" ]
+                        , let delay = 100.0 in HH.option [] [ HH.text $ show delay <> "ms" ]
+                        ]
+                    ]
                 ]
         , Tuple "prog" $
             HH.div
