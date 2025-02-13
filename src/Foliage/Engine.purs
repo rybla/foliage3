@@ -4,10 +4,9 @@ import Foliage.Grammar
 import Prelude
 
 import Control.Alternative (empty)
-import Control.Applicative (pure)
 import Control.Monad.Except (ExceptT, throwError)
 import Control.Monad.Maybe.Trans (MaybeT, runMaybeT)
-import Control.Monad.Reader (ReaderT, ask, asks, runReaderT)
+import Control.Monad.Reader (ReaderT, ask, runReaderT)
 import Control.Monad.State (StateT, execStateT, get, modify_)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (WriterT, runWriterT, tell)
@@ -29,7 +28,6 @@ import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Foliage.Pretty (parens, pretty)
 import Foliage.Ui.Common (Error)
-import Foliage.Utility (todo)
 import Halogen.HTML (PlainHTML)
 import Halogen.HTML as HH
 
@@ -46,6 +44,7 @@ type Ctx m =
   , set_props :: List Prop -> m Unit
   , trace :: PlainHTML -> m Unit
   , delay_duration :: Milliseconds
+  , stopped :: m Boolean
   }
 
 type Env =
@@ -77,6 +76,7 @@ main
      , delay_duration :: Milliseconds
      , set_props :: List Prop -> m Unit
      , trace :: PlainHTML -> m Unit
+     , stopped :: m Boolean
      }
   -> ExceptT Error m
        { props :: List Prop }
@@ -95,6 +95,7 @@ main args = do
           , delay_duration: args.delay_duration
           , set_props: args.set_props
           , trace: args.trace
+          , stopped: args.stopped
           }
       # flip execStateT
           { gas: args.initial_gas
@@ -112,7 +113,7 @@ loop = do
   env <- get
   trace $ HH.text $ "loop where gas = " <> pretty env.gas
   when (env.gas <= 0) do
-    throwError [ HH.text "out of gas" ]
+    throwError [ HH.div [] [ HH.text "out of gas" ], HH.div [] [ HH.text "sample text" ] ]
   new_props :: List Prop <- map fold do
     ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(_rule_name /\ Rule rule) -> do
       Rule rule # applyRule # flip runReaderT env.props
@@ -127,6 +128,8 @@ loop = do
   set_props props'
   modify_ _ { gas = env.gas - 1 }
   Aff.delay ctx.delay_duration # liftAff
+  whenM (ctx.stopped # lift # lift # lift) do
+    throwError [ HH.text "stopped" ]
   when new loop
 
 applyRule :: forall m. MonadAff m => Rule -> ReaderT (List Prop) (M m) (List Prop)
