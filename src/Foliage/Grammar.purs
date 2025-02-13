@@ -82,8 +82,9 @@ instance Ord Comp where
   compare x y = genericCompare x y
 
 data Term
-  = DataTerm DataTerm
-  | VarTerm Name
+  = VarTerm Name
+  | DataTerm DataTerm
+  | PairTerm Term Term
 
 derive instance Generic Term _
 
@@ -91,8 +92,9 @@ instance Show Term where
   show x = genericShow x
 
 instance Pretty Term where
-  pretty (DataTerm a) = pretty a
   pretty (VarTerm x) = pretty x
+  pretty (DataTerm a) = pretty a
+  pretty (PairTerm a b) = parens (pretty a <> " , " <> pretty b)
 
 instance Eq Term where
   eq x y = genericEq x y
@@ -123,8 +125,9 @@ instance Ord DataTerm where
 
 data Typ
   = UnitTyp
-  | BoolType
-  | IntType
+  | BoolTyp
+  | IntTyp
+  | ProdTyp Typ Typ
 
 derive instance Generic Typ _
 
@@ -132,9 +135,10 @@ instance Show Typ where
   show x = genericShow x
 
 instance Pretty Typ where
-  pretty UnitTyp = "𝕌"
-  pretty BoolType = "𝔹"
-  pretty IntType = "ℤ"
+  pretty UnitTyp = "⊤"
+  pretty BoolTyp = "𝔹"
+  pretty IntTyp = "ℤ"
+  pretty (ProdTyp t u) = parens (pretty t <> " × " <> pretty u)
 
 instance Eq Typ where
   eq x y = genericEq x y
@@ -243,11 +247,12 @@ instance Ord Rule where
 -- utilities
 --------------------------------------------------------------------------------
 
-name_of_Term :: Term -> Set Name
-name_of_Term (DataTerm (UnitTerm)) = mempty
-name_of_Term (DataTerm ((BoolTerm _))) = mempty
-name_of_Term (DataTerm ((IntTerm _))) = mempty
-name_of_Term (VarTerm x) = Set.singleton x
+names_in_Term :: Term -> Set Name
+names_in_Term (VarTerm x) = Set.singleton x
+names_in_Term (DataTerm (UnitTerm)) = mempty
+names_in_Term (DataTerm ((BoolTerm _))) = mempty
+names_in_Term (DataTerm ((IntTerm _))) = mempty
+names_in_Term (PairTerm a b) = names_in_Term a <> names_in_Term b
 
 defs_of_Prog
   :: Prog

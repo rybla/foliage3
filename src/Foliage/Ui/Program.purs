@@ -19,7 +19,7 @@ import Effect.Aff (Milliseconds)
 import Effect.Aff.Class (class MonadAff)
 import Foliage.Engine as Engine
 import Foliage.Ui.Common (Message, Error)
-import Foliage.Ui.Grammar (renderProg)
+import Foliage.Ui.Grammar as Ui.Grammar
 import Foliage.Utility (css, inj)
 import Halogen (get, modify_)
 import Halogen as H
@@ -105,7 +105,7 @@ component = H.mkComponent { initialState, eval, render }
   render state =
     let
       html_prog =
-        renderProg state.prog
+        Ui.Grammar.prog state.prog
           # flip runReader
               { props: state.props }
     in

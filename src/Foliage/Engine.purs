@@ -224,12 +224,13 @@ subst_Comp :: forall m. MonadAff m => Comp -> SubstM m Comp
 subst_Comp (Invoke x args) = Invoke x <$> (args # traverse subst_Term)
 
 subst_Term :: forall m. MonadAff m => Term -> SubstM m Term
-subst_Term (DataTerm UnitTerm) = pure $ DataTerm UnitTerm
-subst_Term (DataTerm (BoolTerm b)) = pure $ DataTerm (BoolTerm b)
-subst_Term (DataTerm (IntTerm n)) = pure $ DataTerm (IntTerm n)
 subst_Term a@(VarTerm x) = do
   { sigma } <- ask
   pure $ sigma # Map.lookup x # fromMaybe a
+subst_Term (DataTerm UnitTerm) = pure $ DataTerm UnitTerm
+subst_Term (DataTerm (BoolTerm b)) = pure $ DataTerm (BoolTerm b)
+subst_Term (DataTerm (IntTerm n)) = pure $ DataTerm (IntTerm n)
+subst_Term (PairTerm a b) = PairTerm <$> subst_Term a <*> subst_Term b
 
 --------------------------------------------------------------------------------
 -- latCompare
@@ -318,7 +319,7 @@ solveSysForSubst = init empty >=> go
     else
       pure sigma
 
-  occursIn x a = x `Set.member` name_of_Term a
+  occursIn x a = x `Set.member` names_in_Term a
 
 fromRelGetLat :: forall m. MonadAff m => Rel -> M m Lat
 fromRelGetLat (Rel x) = do

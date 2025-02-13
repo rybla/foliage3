@@ -26,7 +26,7 @@ prog =
             [ PropHyp $ Prop (Rel relP) $ DataTerm (IntTerm 1) ]
         , prop: Prop (Rel relQ) $ DataTerm (IntTerm 1)
         }
-    , DefFun funSuc [ Name "x" /\ IntType ] IntType case _ of
+    , DefFun funSuc [ Name "x" /\ IntTyp ] IntTyp case _ of
         [ DataTerm (IntTerm x) ] -> pure $ DataTerm (IntTerm (x + 1))
         _ -> throwError "invalid args"
     , DefRule (Name "R2") $ Rule

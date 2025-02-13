@@ -14,7 +14,7 @@ import Data.Tuple.Nested ((/\))
 import Data.Unfoldable (none)
 import Data.Variant (Variant)
 import Foliage.Pretty (pretty)
-import Foliage.Utility (css)
+import Foliage.Utility (bind', css)
 import Halogen.HTML as HH
 
 type HTML m as = HH.ComponentHTML (Variant as) () m
@@ -23,87 +23,55 @@ type Ctx =
   { props :: List Prop
   }
 
-renderProg :: forall m as. Prog -> Reader Ctx (HTML m as)
-renderProg (Prog stmts) =
+prog :: forall m as. Prog -> Reader Ctx (HTML m as)
+prog (Prog stmts) =
   HH.div
     [ css do
         tell [ "gap: 0.5em" ]
         tell [ "display: flex", "flex-direction: column", "width: 100%" ]
     ] <$>
-    (stmts # traverse renderStmt # map Array.fromFoldable)
+    (stmts # traverse stmt # map Array.fromFoldable)
 
-renderStmt :: forall m as. Stmt -> Reader Ctx (HTML m as)
-renderStmt (DefRel x l) = do
+stmt :: forall m as. Stmt -> Reader Ctx (HTML m as)
+stmt (DefRel x l) = do
   ctx <- ask
-  labels <-
-    [ HH.div [] <$> ([ renderPunc "relation" ] # sequence)
-    , HH.div [] <$>
-        ( [ renderLine =<<
-              ( [ [ renderName x, renderPunc "(" ] # sequence
-                , renderLat l
-                , [ renderPunc ")" ] # sequence
-                ] # fold
-              )
-          ] # sequence
-        )
-    ] # sequence
-  htmls_props <- ctx.props
-    # foldMap
-        ( \prop@(Prop (Rel x') _) ->
-            if x /= x' then []
-            else
-              prop # renderProp # map (\html -> HH.li [] [ html ]) # pure
-        )
-    # sequence
+  label <- [ punc "relation", name x, punc "(", lat l, punc ")" ] # sequence # map fold # bind' line
   body <-
-    if null htmls_props then
-      pure none
-    else pure
-      <$> HH.div
-        [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ]
-      <$>
-        ( [ renderPunc "known instances:"
-          , pure $
-              HH.ul
-                [ css do tell [ "padding-left: 1em" ] ]
-                htmls_props
-          ] # sequence
-        )
-  renderStmt_template { labels, body }
-renderStmt (DefRule x r) = do
-  labels <-
-    [ HH.div [] <$> ([ renderPunc "rule" ] # sequence)
-    , HH.div [] <$> ([ renderName x ] # sequence)
-    ] # sequence
-  body <-
-    HH.div [] <$>
-      ([ renderRule r ] # sequence)
-  renderStmt_template { labels, body: pure body }
-renderStmt (DefFun x ps t f) = do
-  labels <-
-    [ HH.div [] <$> ([ renderPunc "fun" ] # sequence)
-    , HH.div
-        [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ] <$>
-        ( [ [ renderName x ]
-          , [ renderPunc "(" ]
-          , ps
-              # map (\(x' /\ t') -> [ renderName x', renderPunc ":", renderTyp t' ])
-              # intercalate [ renderPunc "," ]
-          , [ renderPunc ")" ]
-          , [ renderPunc "→", renderTyp t ]
-          , [ renderPunc ":=", renderPunc "<fun>" ]
-          ] # fold # sequence
-        )
-    ] # sequence
-  renderStmt_template { labels, body: none }
+    let
+      m_props = ctx.props # foldMap case _ of
+        p@(Prop (Rel x') _) | x == x' -> [ HH.li [] <$> ([ prop p >>= line ] # sequence) ]
+        _ -> []
+    in
+      if null m_props then pure none
+      else do
+        props <- m_props # sequence
+        pure
+          <$> HH.div
+            [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ]
+          <$>
+            ( [ punc "known instances:"
+              , pure [ HH.ul [] props ]
+              ] # sequence # map fold
+            )
 
-renderTyp :: forall m as. Typ -> Reader Ctx (HTML m as)
-renderTyp UnitTyp = renderKeyword "𝕌"
-renderTyp BoolType = renderKeyword "𝔹"
-renderTyp IntType = renderKeyword "ℤ"
+  stmt_template { label, body }
+stmt (DefRule x r) = do
+  label <- [ punc "rule", name x ] # sequence # map fold # bind' line
+  body <- rule r
+  stmt_template { label, body: pure body }
+stmt (DefFun x ps t _) = do
+  let params = ps # map (\(x' /\ t') -> [ name x', punc ":", typ t' ]) # intercalate [ punc "," ] # sequence # map fold
+  label <- [ punc "fun", name x, punc "(", params, punc ")", punc "→", typ t, punc ":=", punc "<fun>" ] # sequence # map fold # bind' line
+  stmt_template { label, body: none }
 
-renderStmt_template :: forall m as. { labels :: Array (HTML m as), body :: Maybe (HTML m as) } -> Reader Ctx (HTML m as)
-renderStmt_template { labels, body } =
+typ :: forall m as. Typ -> Reader Ctx (Array (HTML m as))
+typ UnitTyp = kw "𝕌"
+typ BoolTyp = kw "𝔹"
+typ IntTyp = kw "ℤ"
+typ (ProdTyp a b) = [ punc "(", typ a, kw "×", typ b, punc ")" ] # sequence # map fold
+
+stmt_template :: forall m as. { label :: HTML m as, body :: Maybe (HTML m as) } -> Reader Ctx (HTML m as)
+stmt_template { label, body } =
   pure
     $ HH.div
         [ css do
@@ -114,91 +82,79 @@ renderStmt_template { labels, body } =
             tell [ "display: flex", "flex-direction: column", "gap: 0.5em", "padding: 0.5em" ]
         ]
     $ fold
-        [ [ HH.div
-              [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ]
-              labels
-          ]
+        [ [ label ]
         , body # maybe none \body' ->
             [ HH.div [ css do tell [ "margin-left: 1em" ] ]
                 [ body' ]
             ]
         ]
 
-renderRule :: forall m as. Rule -> Reader Ctx (HTML m as)
-renderRule (Rule rule) =
+rule :: forall m as. Rule -> Reader Ctx (HTML m as)
+rule (Rule r) =
   HH.div
     [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ] <$>
-    ( [ rule.hyps # foldMap (renderHyp >>> pure)
-      , [ HH.div [ css do tell [ "height: 0.1em", "background-color: black" ] ] [] # pure ]
-      , [ renderProp rule.prop ]
-      ] # fold # sequence
+    ( [ r.hyps # foldMap (\h -> [ hyp h >>= line ] # sequence)
+      , [ HH.div [ css do tell [ "height: 0.1em", "background-color: black" ] ] [] ] # pure
+      , [ prop r.prop >>= line ] # sequence
+      ] # sequence # map fold
     )
 
-renderHyp :: forall m as. Hyp -> Reader Ctx (HTML m as)
-renderHyp (PropHyp p) = renderProp p
-renderHyp (CompHyp x c) = renderLine =<< sequence [ renderName x, renderPunc "←", renderComp c ]
-renderHyp (CondHyp a) = renderLine =<< sequence [ renderPunc "if", renderTerm a ]
+hyp :: forall m as. Hyp -> Reader Ctx (Array (HTML m as))
+hyp (PropHyp p) = prop p
+hyp (CompHyp x c) = [ name x, punc "←", comp c ] # sequence # map fold
+hyp (CondHyp a) = [ punc "if", term a ] # sequence # map fold
 
-renderComp :: forall m as. Comp -> Reader Ctx (HTML m as)
-renderComp (Invoke x args) =
-  renderLine =<<
-    ( [ [ renderName x, renderPunc "(" ]
-      , args # map renderTerm # Array.intersperse (renderPunc ",")
-      , [ renderPunc ")" ]
-      ] # fold # sequence
-    )
+comp :: forall m as. Comp -> Reader Ctx (Array (HTML m as))
+comp (Invoke x args) = [ name x, punc "(", args # map term # intercalate (punc ","), punc ")" ] # sequence # map fold
 
-renderProp :: forall m as. Prop -> Reader Ctx (HTML m as)
-renderProp (Prop r a) = renderLine =<< sequence [ renderRel r, renderPunc "(", renderTerm a, renderPunc ")" ]
+prop :: forall m as. Prop -> Reader Ctx (Array (HTML m as))
+prop (Prop r a) = [ rel r, punc "(", term a, punc ")" ] # sequence # map fold
 
-renderRel :: forall m as. Rel -> Reader Ctx (HTML m as)
-renderRel (Rel x) = renderName x
+rel :: forall m as. Rel -> Reader Ctx (Array (HTML m as))
+rel (Rel x) = name x
 
-renderLat :: forall m as. Lat -> Reader Ctx (Array (HTML m as))
-renderLat UnitLat = renderKeyword "Unit" # map pure
-renderLat BoolLat = renderKeyword "Bool" # map pure
-renderLat IntLat = renderKeyword "Int" # map pure
-renderLat (DiscreteLat l) =
-  [ [ renderKeyword "Discrete", renderPunc "(" ] # sequence
-  , renderLat l
-  , [ renderPunc ")" ] # sequence
-  ] # sequence # map fold
-renderLat (OppositeLat l) =
-  [ [ renderKeyword "Opposite", renderPunc "(" ] # sequence
-  , renderLat l
-  , [ renderPunc ")" ] # sequence
-  ] # sequence # map fold
+lat :: forall m as. Lat -> Reader Ctx (Array (HTML m as))
+lat UnitLat = kw "Unit"
+lat BoolLat = kw "Bool"
+lat IntLat = kw "Int"
+lat (DiscreteLat l) = [ kw "Discrete", punc "(", lat l, punc ")" ] # sequence # map fold
+lat (OppositeLat l) = [ kw "Opposite", punc "(", lat l, punc ")" ] # sequence # map fold
 
-renderTerm :: forall m as. Term -> Reader Ctx (HTML m as)
-renderTerm (DataTerm UnitTerm) = renderKeyword "unit"
-renderTerm (DataTerm (BoolTerm b)) = renderKeyword (show b)
-renderTerm (DataTerm (IntTerm n)) = renderKeyword (show n)
-renderTerm (VarTerm x) = renderName x
+term :: forall m as. Term -> Reader Ctx (Array (HTML m as))
+term (VarTerm x) = name x
+term (DataTerm UnitTerm) = kw "unit"
+term (DataTerm (BoolTerm b)) = kw (show b)
+term (DataTerm (IntTerm n)) = kw (show n)
+term (PairTerm a b) = [ punc "(", term a, punc " , ", term b, punc ")" ] # sequence # map fold
 
-renderName :: forall m as. Name -> Reader Ctx (HTML m as)
-renderName x =
+name :: forall m as. Name -> Reader Ctx (Array (HTML m as))
+name x =
   pure
-    $ HH.div
+    [ HH.div
         [ css do tell [ "color: blue" ] ]
         [ HH.text $ pretty x ]
+    ]
 
-renderKeyword :: forall m as. String -> Reader Ctx (HTML m as)
-renderKeyword s =
+kw :: forall m as. String -> Reader Ctx (Array (HTML m as))
+kw s =
   pure
-    $ HH.div
+    [ HH.div
         [ css do tell [ "color: green" ] ]
         [ HH.text s ]
+    ]
 
-renderPunc :: forall m as. String -> Reader Ctx (HTML m as)
-renderPunc s =
+punc :: forall m as. String -> Reader Ctx (Array (HTML m as))
+punc s =
+  pure
+    [ HH.div
+        [ css do tell [ "color: black" ] ]
+        [ HH.text s ]
+    ]
+
+line :: forall m as. Array (HTML m as) -> Reader Ctx (HTML m as)
+line xs =
   pure $
     HH.div
-      [ css do tell [ "color: black" ] ]
-      [ HH.text s ]
+      [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ]
+      xs
 
-renderLine :: forall m as. Array (HTML m as) -> Reader Ctx (HTML m as)
-renderLine xs =
-  pure
-    $ HH.div
-        [ css do tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ] ]
-        xs

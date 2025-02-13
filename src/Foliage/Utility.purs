@@ -2,6 +2,7 @@ module Foliage.Utility where
 
 import Prelude
 
+import Control.Bind (bindFlipped)
 import Control.Monad.Writer (Writer, execWriter)
 import Data.Array as Array
 import Data.Lens.Record as Data.Lens.Record
@@ -29,3 +30,10 @@ prop = Data.Lens.Record.prop (Proxy @l)
 inj :: forall @sym a r1 r2. Cons sym a r1 r2 => IsSymbol sym => a -> Variant r2
 inj = Data.Variant.inj (Proxy @sym)
 
+bind' :: forall m a b. Bind m => (a -> m b) -> m a -> m b
+bind' = bindFlipped
+
+mapMap :: forall f33 f36 a37 b38. Functor f33 => Functor f36 => (a37 -> b38) -> f33 (f36 a37) -> f33 (f36 b38)
+mapMap f = map (map f)
+
+infixl 4 mapMap as <$$>
