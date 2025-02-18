@@ -8290,8 +8290,10 @@
       }))])([div2([css(tell2(["padding: 0.5em", "background-color: black", "color: white", "display: flex", "flex-direction: row", "justify-content: space-between", "gap: 1em"]))])([div2([])([text("console")]), div2([css(tell2(["display: flex", "flex-direction: row", "gap: 1em"]))])([button([onClick($$const(inj3(unit)))])([text("clear")])])]), div3([css(discard1(tell2(["display: flex", "flex-direction: column-reverse", "gap: 0.5em"]))(function() {
         return tell2(["overflow-y: scroll"]);
       }))])(foldMapWithIndex2(function(i2) {
-        return function(html2) {
-          return [new Tuple(show2(i2), div2([css(tell2(["flex-shrink: 0", "padding: 0.5em", "border: 0.1em solid black"]))])([fromPlainHTML(html2)]))];
+        return function(v) {
+          return [new Tuple(show2(i2), div2([css(discard1(tell2(["flex-shrink: 0", "padding: 0.5em", "border: 0.1em solid black"]))(function() {
+            return tell2(["display: flex", "flex-direction: row", "gap: 0.5em"]);
+          }))])([div2([css(tell2(["flex-grow: 0", "flex-shrink: 0"]))])([div2([css(tell2(["background-color: black", "color: white", "padding: 0 0.5em"]))])([text(v.label)])]), div2([css(tell2(["flex-grow: 1", "flex-shrink: 1"]))])([fromPlainHTML(v.content)])]))];
         };
       })(state3.messages))]);
     };
@@ -8307,16 +8309,16 @@
     };
     var handleAction = match2({
       clear: $$const(modify_3(function(v) {
-        var $33 = {};
-        for (var $34 in v) {
-          if ({}.hasOwnProperty.call(v, $34)) {
-            $33[$34] = v[$34];
+        var $37 = {};
+        for (var $38 in v) {
+          if ({}.hasOwnProperty.call(v, $38)) {
+            $37[$38] = v[$38];
           }
           ;
         }
         ;
-        $33.messages = none2;
-        return $33;
+        $37.messages = none2;
+        return $37;
       }))
     });
     var $$eval = mkEval({
@@ -9444,10 +9446,12 @@
     var lift43 = lift6(monadStateT2);
     var lift53 = lift12(monadExceptT2);
     var lift62 = lift22(Monad0);
-    return function(msg) {
-      return bind8(ask3)(function(ctx) {
-        return lift43(lift53(lift62(ctx.trace(msg))));
-      });
+    return function(tag) {
+      return function(msg) {
+        return bind8(ask3)(function(ctx) {
+          return lift43(lift53(lift62(ctx.trace(tag)(msg))));
+        });
+      };
     };
   };
   var subst_Term = function(dictMonadAff) {
@@ -9866,7 +9870,7 @@
     var subst_Rule1 = subst_Rule(dictMonadAff);
     var runComp1 = runComp(dictMonadAff);
     return function(v) {
-      return discard14(lift43(trace1(text("applyRule " + pretty32(v)))))(function() {
+      return discard14(lift43(trace1("applyRule")(text(pretty32(v)))))(function() {
         if (v.hyps instanceof Nil) {
           return pure18(singleton10(v.prop));
         }
@@ -9876,7 +9880,7 @@
             return map30(fold2)(traverse22(function(prop8) {
               return bind8(lift43(runMaybeT(unify1(v.hyps.value0.value0)(prop8))))(function(v1) {
                 if (v1 instanceof Nothing) {
-                  return discard14(lift43(trace1(text("\u2717 " + (pretty42(v.hyps.value0.value0) + (" by " + pretty42(prop8)))))))(function() {
+                  return discard14(lift43(trace1("applyRule")(text("\u2717 " + (pretty42(v.hyps.value0.value0) + (" by " + pretty42(prop8)))))))(function() {
                     return pure18(none3);
                   });
                 }
@@ -9885,7 +9889,7 @@
                   return bind8(lift43(flip(runReaderT)({
                     sigma: v1.value0
                   })(subst_Prop1(prop8))))(function(prop$prime) {
-                    return discard14(lift43(trace1(text("\u2713 " + (pretty42(v.hyps.value0.value0) + (" by " + pretty42(prop$prime)))))))(function() {
+                    return discard14(lift43(trace1("applyRule")(text("\u2713 " + (pretty42(v.hyps.value0.value0) + (" by " + pretty42(prop$prime)))))))(function() {
                       return bind8(lift43(flip(runReaderT)({
                         sigma: v1.value0
                       })(subst_Rule1({
@@ -9957,23 +9961,23 @@
     var lift62 = lift22(Monad0);
     return bind8(ask(monadAskReaderT(monadStateT2)))(function(ctx) {
       return bind8(get4)(function(env) {
-        return discard14(trace1(text("loop where gas = " + pretty52(env.gas))))(function() {
+        return discard14(trace1("loop")(text("loop where gas = " + pretty52(env.gas))))(function() {
           return discard14(when4(env.gas <= 0)(throwError5([div2([])([text("out of gas")]), div2([])([text("sample text")])])))(function() {
             return bind8(map30(fold2)(traverse22(function(v) {
               return flip(runReaderT)(env.props)(applyRule1(v.value1));
             })(toUnfoldable5(ctx.rules))))(function(v) {
-              return discard14(trace1(text("new_props = " + pretty62(v))))(function() {
+              return discard14(trace1("loop")(text("new_props = " + pretty62(v))))(function() {
                 return bind8(flip(foldM1)(new Tuple(false, env.props))(function(v1) {
                   return function(p2) {
                     return bind8(insertProp1(p2)(v1.value1))(function(v2) {
-                      return discard14(trace1(text("insertProp " + (parens(pretty42(p2)) + (" " + (parens(pretty62(v1.value1)) + (" -> " + parens(pretty72(new Tuple(v2.value0, v2.value1))))))))))(function() {
+                      return discard14(trace1("loop")(text("insertProp " + (parens(pretty42(p2)) + (" " + (parens(pretty62(v1.value1)) + (" -> " + parens(pretty72(new Tuple(v2.value0, v2.value1))))))))))(function() {
                         return pure18(new Tuple(v1.value0 || v2.value0, v2.value1));
                       });
                     });
                   };
                 })(v))(function(v1) {
-                  return discard14(trace1(text("new = " + pretty82(v1.value0))))(function() {
-                    return discard14(trace1(text("props' = " + pretty62(v1.value1))))(function() {
+                  return discard14(trace1("loop")(text("new = " + pretty82(v1.value0))))(function() {
+                    return discard14(trace1("loop")(text("props' = " + pretty62(v1.value1))))(function() {
                       return discard14(set_props1(v1.value1))(function() {
                         return discard14(modify_5(function(v2) {
                           var $609 = {};
@@ -10025,9 +10029,9 @@
         set_props: args.set_props,
         trace: args.trace,
         stopped: args.stopped
-      })(discard14(trace1(text("begin main")))(function() {
+      })(discard14(trace1("main")(text("begin")))(function() {
         return discard14(loop1)(function() {
-          return trace1(text("end main"));
+          return trace1("main")(text("end"));
         });
       }))))(function(v1) {
         return pure18({
@@ -10490,7 +10494,14 @@
                   return $75;
                 });
               },
-              trace: raise,
+              trace: function(label5) {
+                return function(content3) {
+                  return raise({
+                    label: label5,
+                    content: content3
+                  });
+                };
+              },
               stopped: gets2(function(v1) {
                 return v1.stopped;
               })
@@ -10509,7 +10520,10 @@
                   $79.result = pure11(result.value0);
                   return $79;
                 }))(function() {
-                  return raise(div2([])([div2([])([text("error")]), div2([css(tell4(["display: flex", "flex-direction: column"]))])(result.value0)]));
+                  return raise({
+                    label: "error",
+                    content: div2([])([div2([])([text("error")]), div2([css(tell4(["display: flex", "flex-direction: column"]))])(result.value0)])
+                  });
                 });
               }
               ;
@@ -10530,7 +10544,7 @@
                 });
               }
               ;
-              throw new Error("Failed pattern match at Foliage.Ui.Program (line 103, column 9 - line 120, column 16): " + [result.constructor.name]);
+              throw new Error("Failed pattern match at Foliage.Ui.Program (line 103, column 9 - line 123, column 16): " + [result.constructor.name]);
             });
           });
         });

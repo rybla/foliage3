@@ -18,7 +18,7 @@ import Type.Proxy (Proxy(..))
 main :: Effect Unit
 main = HA.runHalogenAff (HVD.runUI component {} =<< HA.awaitBody)
 
-data Action = MessageAction Message
+data Action = MessageAction { label :: String, content :: Message }
 
 component :: forall query input output m. MonadAff m => H.Component query input output m
 component = H.mkComponent { initialState, eval, render }

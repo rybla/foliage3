@@ -38,7 +38,7 @@ import Halogen.HTML.Properties as HP
 type Input =
   {}
 
-type Output = Message
+type Output = { label :: String, content :: Message }
 
 type State =
   { example_name :: String
@@ -97,7 +97,7 @@ component = H.mkComponent { initialState, eval, render }
             , initial_gas: state.initial_gas
             , delay_duration: state.delay_duration
             , set_props: \props -> modify_ _ { props = props }
-            , trace: H.raise
+            , trace: \label content -> H.raise { label, content }
             , stopped: gets _.stopped
             } # runExceptT
         case result of
@@ -107,11 +107,14 @@ component = H.mkComponent { initialState, eval, render }
               , result = pure err
               }
             H.raise $
-              HH.div
-                []
-                [ HH.div [] [ HH.text "error" ]
-                , HH.div [ css do tell [ "display: flex", "flex-direction: column" ] ] err
-                ]
+              { label: "error"
+              , content:
+                  HH.div
+                    []
+                    [ HH.div [] [ HH.text "error" ]
+                    , HH.div [ css do tell [ "display: flex", "flex-direction: column" ] ] err
+                    ]
+              }
           Right { props } -> do
             modify_ _
               { status = inj @"ready" unit

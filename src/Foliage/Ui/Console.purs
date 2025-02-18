@@ -5,7 +5,6 @@ import Prelude
 import Control.Monad.State (modify_)
 import Control.Monad.Writer (tell)
 import Data.FoldableWithIndex (foldMapWithIndex)
-import Data.Variant (match)
 import Data.Lens ((%=))
 import Data.Lens.Record (prop)
 import Data.List (List)
@@ -13,7 +12,9 @@ import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Data.Unfoldable (none)
+import Data.Variant (match)
 import Effect.Aff.Class (class MonadAff)
+import Foliage.Pretty (brackets)
 import Foliage.Ui.Common (ConsoleQuery(..), Message)
 import Foliage.Utility (css, inj)
 import Halogen as H
@@ -23,7 +24,7 @@ import Halogen.HTML.Events as HE
 import Type.Prelude (Proxy(..))
 
 type State =
-  { messages :: List Message
+  { messages :: List { label :: String, content :: Message }
   }
 
 component :: forall input output m. MonadAff m => H.Component ConsoleQuery input output m
@@ -65,10 +66,22 @@ component = H.mkComponent { initialState, eval, render }
               tell [ "display: flex", "flex-direction: column-reverse", "gap: 0.5em" ]
               tell [ "overflow-y: scroll" ]
           ] $
-          state.messages # foldMapWithIndex \i html ->
+          state.messages # foldMapWithIndex \i { label, content } ->
             [ Tuple (show i) $
                 HH.div
-                  [ css do tell [ "flex-shrink: 0", "padding: 0.5em", "border: 0.1em solid black" ] ]
-                  [ html # HH.fromPlainHTML ]
+                  [ css do
+                      tell [ "flex-shrink: 0", "padding: 0.5em", "border: 0.1em solid black" ]
+                      tell [ "display: flex", "flex-direction: row", "gap: 0.5em" ]
+                  ]
+                  [ HH.div
+                      [ css do tell [ "flex-grow: 0", "flex-shrink: 0" ] ]
+                      [ HH.div
+                          [ css do tell [ "background-color: black", "color: white", "padding: 0 0.5em" ] ]
+                          [ HH.text label ]
+                      ]
+                  , HH.div
+                      [ css do tell [ "flex-grow: 1", "flex-shrink: 1" ] ]
+                      [ content # HH.fromPlainHTML ]
+                  ]
             ]
       ]

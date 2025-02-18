@@ -43,7 +43,7 @@ type Ctx m =
   , rules :: Map Name Rule
   , funs :: Map Name Fun
   , set_props :: List Prop -> m Unit
-  , trace :: PlainHTML -> m Unit
+  , trace :: String -> PlainHTML -> m Unit
   , delay_duration :: Milliseconds
   , stopped :: m Boolean
   }
@@ -60,10 +60,10 @@ set_props props = do
   ctx.set_props props # lift # lift # lift
   pure unit
 
-trace :: forall m. MonadAff m => PlainHTML -> M m Unit
-trace msg = do
+trace :: forall m. MonadAff m => String -> PlainHTML -> M m Unit
+trace tag msg = do
   ctx <- ask
-  ctx.trace msg # lift # lift # lift
+  ctx.trace tag msg # lift # lift # lift
 
 --------------------------------------------------------------------------------
 -- main
@@ -76,7 +76,7 @@ main
      , initial_gas :: Int
      , delay_duration :: Milliseconds
      , set_props :: List Prop -> m Unit
-     , trace :: PlainHTML -> m Unit
+     , trace :: String -> PlainHTML -> m Unit
      , stopped :: m Boolean
      }
   -> ExceptT Error m
@@ -85,9 +85,9 @@ main args = do
   let { relLats, rules, funs } = defs_of_Prog args.prog
   { props } <-
     ( do
-        trace $ HH.text "begin main"
+        trace "main" $ HH.text "begin"
         loop
-        trace $ HH.text "end main"
+        trace "main" $ HH.text "end"
     )
       # flip runReaderT
           { relLats
@@ -112,20 +112,20 @@ loop :: forall m. MonadAff m => M m Unit
 loop = do
   ctx <- ask
   env <- get
-  trace $ HH.text $ "loop where gas = " <> pretty env.gas
+  trace "loop" $ HH.text $ "loop where gas = " <> pretty env.gas
   when (env.gas <= 0) do
     throwError [ HH.div [] [ HH.text "out of gas" ], HH.div [] [ HH.text "sample text" ] ]
   new_props :: List Prop <- map fold do
     ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(_rule_name /\ Rule rule) -> do
       Rule rule # applyRule # flip runReaderT env.props
-  trace $ HH.text $ "new_props = " <> pretty new_props
+  trace "loop" $ HH.text $ "new_props = " <> pretty new_props
   new /\ props' :: Boolean /\ List Prop <-
     new_props # flip foldM (false /\ env.props) \(new /\ props') p -> do
       new' /\ props'' <- insertProp p props'
-      trace $ HH.text $ "insertProp " <> parens (pretty p) <> " " <> parens (pretty props') <> " -> " <> parens (pretty (new' /\ props''))
+      trace "loop" $ HH.text $ "insertProp " <> parens (pretty p) <> " " <> parens (pretty props') <> " -> " <> parens (pretty (new' /\ props''))
       pure $ (new || new') /\ props''
-  trace $ HH.text $ "new = " <> pretty new
-  trace $ HH.text $ "props' = " <> pretty props'
+  trace "loop" $ HH.text $ "new = " <> pretty new
+  trace "loop" $ HH.text $ "props' = " <> pretty props'
   set_props props'
   modify_ _ { gas = env.gas - 1 }
   Aff.delay ctx.delay_duration # liftAff
@@ -135,7 +135,7 @@ loop = do
 
 applyRule :: forall m. MonadAff m => Rule -> ReaderT (List Prop) (M m) (List Prop)
 applyRule (Rule rule) = do
-  lift $ trace $ HH.text $ "applyRule " <> pretty (Rule rule)
+  lift $ trace "applyRule" $ HH.text $ pretty (Rule rule)
   case rule.hyps of
     Nil -> pure $ singleton rule.prop
     Cons (PropHyp hyp) hyps -> do
@@ -146,13 +146,13 @@ applyRule (Rule rule) = do
         -- check if `prop` can satisfy `hyp`
         unify hyp prop # runMaybeT # lift >>= case _ of
           Nothing -> do
-            lift $ trace $ HH.text $ "✗ " <> pretty hyp <> " by " <> pretty prop
+            lift $ trace "applyRule" $ HH.text $ "✗ " <> pretty hyp <> " by " <> pretty prop
             pure none
           -- if it can, then update rest of the rule with resulting `sigma`,
           -- then apply the rest of the rule
           Just sigma -> do
             prop' <- prop # subst_Prop # flip runReaderT { sigma } # lift
-            lift $ trace $ HH.text $ "✓ " <> pretty hyp <> " by " <> pretty prop'
+            lift $ trace "applyRule" $ HH.text $ "✓ " <> pretty hyp <> " by " <> pretty prop'
             rule' <- Rule rule { hyps = hyps } # subst_Rule # flip runReaderT { sigma } # lift
             rule' # applyRule
     Cons (CompHyp x c) hyps -> do

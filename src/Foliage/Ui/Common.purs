@@ -4,7 +4,7 @@ import Prelude
 
 import Halogen.HTML (PlainHTML)
 
-data ConsoleQuery a = TellMessage Message a
+data ConsoleQuery a = TellMessage { label :: String, content :: Message } a
 
 type Message = PlainHTML
 
