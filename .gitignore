@@ -184,3 +184,4 @@ node_modules
 .psci
 output
 .purs-repl
+.psc-ide-port
