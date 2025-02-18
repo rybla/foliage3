@@ -114,7 +114,7 @@ loop = do
   env <- get
   trace "loop" $ HH.text $ "loop where gas = " <> pretty env.gas
   when (env.gas <= 0) do
-    throwError [ HH.div [] [ HH.text "out of gas" ], HH.div [] [ HH.text "sample text" ] ]
+    throwError [ HH.div [] [ HH.text "out of gas" ] ]
   new_props :: List Prop <- map fold do
     ctx.rules # (Map.toUnfoldable :: _ -> List _) # traverse \(_rule_name /\ Rule rule) -> do
       Rule rule # applyRule # flip runReaderT env.props

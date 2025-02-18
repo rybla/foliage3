@@ -14,7 +14,7 @@ import Data.Array as Array
 import Data.Either (Either(..), fromRight')
 import Data.Foldable (fold)
 import Data.List (List)
-import Data.Maybe (Maybe, fromMaybe', maybe, maybe')
+import Data.Maybe (Maybe(..), fromMaybe', maybe, maybe')
 import Data.Newtype (unwrap, wrap)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Tuple.Nested (type (/\), (/\))
@@ -28,7 +28,7 @@ import Foliage.Example.Ex2 as Ex2
 import Foliage.Ui.Common (Message, Error)
 import Foliage.Ui.Grammar as Ui.Grammar
 import Foliage.Utility (css, impossible, inj)
-import Halogen (get, modify_)
+import Halogen (HalogenM, get, modify_)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Elements.Keyed as HHK
@@ -97,7 +97,8 @@ component = H.mkComponent { initialState, eval, render }
             , initial_gas: state.initial_gas
             , delay_duration: state.delay_duration
             , set_props: \props -> modify_ _ { props = props }
-            , trace: \label content -> H.raise { label, content }
+            -- , trace: make_trace none 
+            , trace: make_trace $ pure [ "applyRule" ]
             , stopped: gets _.stopped
             } # runExceptT
         case result of
@@ -218,3 +219,6 @@ component = H.mkComponent { initialState, eval, render }
               [ html_prog ]
         ]
 
+make_trace :: forall content state action slots m label. Eq label => Maybe (Array label) -> label -> content -> HalogenM state action slots { content :: content, label :: label } m Unit
+make_trace Nothing label content = H.raise { label, content }
+make_trace (Just labels) label content = when (label `Array.elem` labels) do H.raise { label, content }
