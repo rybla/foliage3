@@ -1,28 +1,25 @@
 module Foliage.Engine where
 
-import Foliage.Grammar
+import Foliage.Grammar (Comp(..), DataTerm(..), Fun, Hyp(..), Lat, Name, Prog, Prop(..), Rel(..), Rule(..), Term(..), defs_of_Prog, vars_Term)
 import Prelude
 
-import Control.Alternative (empty)
-import Control.Monad.Except (ExceptT, throwError)
-import Control.Monad.Maybe.Trans (MaybeT, runMaybeT)
+import Control.Monad.Except (ExceptT, runExceptT, throwError)
 import Control.Monad.Reader (ReaderT, ask, runReaderT)
 import Control.Monad.State (StateT, execStateT, get, modify_)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Writer (WriterT, execWriterT, runWriterT, tell)
+import Control.Monad.Writer (WriterT, runWriterT, tell)
 import Control.Plus (empty)
-import Data.Bifunctor (lmap)
-import Data.Either (either)
-import Data.Foldable (foldM, foldl, for_, traverse_)
+import Data.Array as Array
+import Data.Bifunctor (rmap)
+import Data.Either (Either(..), either)
+import Data.Foldable (foldM)
 import Data.FoldableWithIndex (traverseWithIndex_)
 import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.Ordering (invert)
 import Data.Set as Set
-import Data.Traversable (fold, traverse)
-import Data.TraversableWithIndex (traverseWithIndex)
+import Data.Traversable (fold, sequence, traverse)
 import Data.Tuple (snd)
 import Data.Tuple.Nested (type (/\), (/\))
 import Data.Unfoldable (none)
@@ -149,13 +146,13 @@ applyRule name hyps_satisfied (Rule rule) = do
       -- for each known `prop`
       map fold $ props # traverse \prop -> do
         -- check if prop subsumes hyp
-        prop `subsumes` hyp # runMaybeT # lift >>= case _ of
-          Nothing -> do
+        prop `subsumes` hyp # runExceptT # lift >>= case _ of
+          Left _ -> do
             lift $ trace "applyRule" $ HH.text $ pretty name <> "#" <> show hyps_satisfied <> " ✗ " <> pretty hyp <> " by " <> pretty prop
             pure none
           -- if it can, then update rest of the rule with resulting `sigma`,
           -- then apply the rest of the rule
-          Just sigma -> do
+          Right sigma -> do
             prop' <- prop # subst_Prop # flip runReaderT { sigma } # lift
             lift $ trace "applyRule" $ HH.text $ pretty name <> "#" <> show hyps_satisfied <> " ✓ " <> pretty hyp <> " by " <> pretty prop'
             rule' <- Rule rule { hyps = hyps } # subst_Rule # flip runReaderT { sigma } # lift
@@ -185,77 +182,109 @@ insertProp :: forall m. MonadAff m => Prop -> List Prop -> M m (Boolean /\ List 
 insertProp p props = go # map \(new /\ props') -> new /\ (if new then p : props' else props')
   where
   go = props # flip foldM (true /\ none) \(new /\ props') q -> do
-    p `latCompare` q # runMaybeT >>= case _ of
-      Nothing -> pure $ new /\ (q : props')
-      Just (_ /\ LT) -> pure $ false /\ (q : props')
-      Just (_ /\ EQ) -> pure $ false /\ (q : props')
-      Just (_ /\ GT) -> pure $ new /\ props'
+    p `latCompare` q # runExceptT >>= case _ of
+      Left _ -> pure $ new /\ (q : props')
+      Right (_ /\ LT) -> pure $ false /\ (q : props')
+      Right (_ /\ EQ) -> pure $ false /\ (q : props')
+      Right (_ /\ GT) -> pure $ new /\ props'
 
 --------------------------------------------------------------------------------
 -- subsumes
 --------------------------------------------------------------------------------
 
-subsumes :: forall m. MonadAff m => Prop -> Prop -> MaybeT (M m) Subst
+subsumes :: forall m. MonadAff m => Prop -> Prop -> ExceptT String (M m) Subst
 subsumes p q = do
   sigma /\ o <- latCompare p q
   case o of
     GT -> pure sigma
     EQ -> pure sigma
-    _ -> empty
+    _ -> throwError $ pretty p <> " is subsumed by " <> pretty q
 
-subsumes_Term :: forall m. MonadAff m => Lat -> Term -> Term -> MaybeT (M m) Subst
+subsumes_Term :: forall m. MonadAff m => Lat -> Term -> Term -> ExceptT String (M m) Subst
 subsumes_Term l a b = do
   sigma /\ o <- latCompare_Term l a b
   case o of
     GT -> pure sigma
     EQ -> pure sigma
-    _ -> empty
+    _ -> throwError $ "In lattice " <> pretty l <> ", " <> pretty a <> " is subsumed by " <> pretty b
 
 --------------------------------------------------------------------------------
 -- latCompare
 --------------------------------------------------------------------------------
 
-latCompare :: forall m. MonadAff m => Prop -> Prop -> MaybeT (M m) (Subst /\ Ordering)
-latCompare = todo ""
+latCompare :: forall m. MonadAff m => Prop -> Prop -> ExceptT String (M m) (Subst /\ Ordering)
+latCompare (Prop r1 a1) (Prop r2 a2) | r1 == r2 = do
+  l <- fromRelGetLat r1 # lift
+  latCompare_Term l a1 a2
+latCompare p q = throwError $ pretty p <> " is not comparable to " <> pretty q
 
-latCompare_Term :: forall m. MonadAff m => Lat -> Term -> Term -> MaybeT (M m) (Subst /\ Ordering)
-latCompare_Term = todo ""
+latCompare_Term :: forall m. MonadAff m => Lat -> Term -> Term -> ExceptT String (M m) (Subst /\ Ordering)
+latCompare_Term l a b = do
+  o /\ sys_ <- latCompare_Term' l a b # runWriterT
+  let
+    sys =
+      sys_
+        # map (rmap (rmap Array.singleton))
+        # Map.fromFoldableWith \(l1 /\ ts1) (l2 /\ ts2) ->
+            if l1 /= l2 then bug $ "what do i do when two uses of a variable use the variable in a different lattice?"
+            else l1 /\ (ts1 <> ts2)
+  sigma <- solveSys sys
+  pure $ sigma /\ o
 
-latCompare_Term' :: forall m. MonadAff m => Lat -> Term -> Term -> WriterT Sys (MaybeT (M m)) (Subst /\ Ordering)
-latCompare_Term' = todo ""
+latCompare_Term' :: forall m. MonadAff m => Lat -> Term -> Term -> WriterT (Array (Name /\ Lat /\ Term)) (ExceptT String (M m)) Ordering
+-- VarTerm
+latCompare_Term' l (VarTerm x1) (VarTerm x2) = do
+  tell [ x1 /\ l /\ VarTerm x2 ]
+  pure EQ
+latCompare_Term' l (VarTerm x1) a2 = do
+  tell [ x1 /\ l /\ a2 ]
+  pure GT
+latCompare_Term' l a1 (VarTerm x2) = do
+  tell [ x2 /\ l /\ a1 ]
+  pure LT
+-- TODO
+latCompare_Term' _ _ _ = empty
 
 --------------------------------------------------------------------------------
 -- Sys
 --------------------------------------------------------------------------------
 
 type Sys = Map Name (Lat /\ Array Term)
+
 type Sys1 = Map Name (Lat /\ Term)
 
 -- Solves the system for a consistent substitution
-solveSys :: forall m. MonadAff m => Sys -> MaybeT (M m) Subst
+solveSys :: forall m. MonadAff m => Sys -> ExceptT String (M m) Subst
 solveSys sys = do
   -- unify multiple assignments of the same var until only single assignment per var
   let
-    go :: Sys -> MaybeT (M m) Sys1
+    go :: Sys -> ExceptT String (M m) Sys1
     go sys = do
       -- consistency (occurs) check
       sys # traverseWithIndex_ \x (_ /\ ts) -> do
         when (x `Set.member` (ts # map vars_Term # Set.unions)) do
-          empty
-      sys <- sys
-        # traverseWithIndex
-            ( \x (l /\ ts) -> do
-                sys /\ t <- unifyTerms l ts
-                pure $ Map.insert x (l /\ [ t ]) sys
-            )
-        # map
-            ( Map.values >>> foldl
-                ( Map.unionWith \(l1 /\ ts1) (l2 /\ ts2) ->
-                    if l1 /= l2 then bug $ "what do i do when two uses of a variable use the variable in a different lattice?"
-                    else l1 /\ (ts1 <> ts2)
+          throwError $ "variable " <> pretty x <> " was assigned to the terms " <> pretty ts <> " which include a reference to the variable itself"
+      sys :: List (Map Name (ExceptT String (M m) (Lat /\ Array Term))) <- sys # (Map.toUnfoldable :: _ -> List _) # traverse \(x /\ l /\ ts) -> do
+        case ts of
+          [ t ] -> pure $ Map.singleton x (pure (l /\ [ t ]))
+          _ -> do
+            sys /\ t <- unifyTerms l ts
+            pure $ Map.insert x (pure (l /\ [ t ])) (sys # map pure)
+      sys :: Sys <-
+        foldM
+          ( \sys msys' ->
+              Map.unionWith
+                ( \mlt1 mlt2 -> do
+                    l1 /\ ts1 <- mlt1
+                    l2 /\ ts2 <- mlt2
+                    when (l1 /= l2) do throwError "if a variable is assigned under two different lattice orderings, then we can't compare"
+                    pure (l1 /\ (ts1 <> ts2))
                 )
-                Map.empty
-            )
+                (sys # map pure)
+                msys' # sequence
+          )
+          Map.empty
+          sys
       case
         sys # traverse \(l /\ ts) -> case ts of
           [ t ] -> pure (l /\ t)
@@ -268,7 +297,7 @@ solveSys sys = do
   sys1 :: Sys1 <- sys1 # traverse \(l /\ t) -> (l /\ _) <$> (t # subst_Term >>> flip runReaderT { sigma: sys1 # map snd } >>> lift)
   pure $ sys1 # map snd
 
-unifyTerms :: forall m. MonadAff m => Lat -> Array Term -> MaybeT (M m) (Sys /\ Term)
+unifyTerms :: forall m. MonadAff m => Lat -> Array Term -> ExceptT String (M m) (Sys /\ Term)
 unifyTerms = todo ""
 
 --------------------------------------------------------------------------------
@@ -414,10 +443,10 @@ subst_Term (PairTerm a b) = PairTerm <$> subst_Term a <*> subst_Term b
 
 --   occursIn x a = x `Set.member` names_in_Term a
 
--- fromRelGetLat :: forall m. MonadAff m => Rel -> M m Lat
--- fromRelGetLat (Rel x) = do
---   { relLats } <- ask
---   relLats
---     # Map.lookup x
---     # maybe (throwError [ HH.text "fromRelGetLat", HH.text $ "unknown relation name: " <> pretty x ]) pure
+fromRelGetLat :: forall m. MonadAff m => Rel -> M m Lat
+fromRelGetLat (Rel x) = do
+  { relLats } <- ask
+  relLats
+    # Map.lookup x
+    # maybe (throwError [ HH.text "fromRelGetLat", HH.text $ "unknown relation name: " <> pretty x ]) pure
 
