@@ -1,5 +1,5 @@
 const serve_dir = "docs"
-const port = 8000;
+const port = 8012;
 
 Bun.serve({
   port,

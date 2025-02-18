@@ -41,7 +41,15 @@ stmt (DefRel x l) = do
   body <-
     let
       m_props = ctx.props # foldMap case _ of
-        p@(Prop (Rel x') _) | x == x' -> [ HH.li [] <$> ([ prop p >>= line ] # sequence) ]
+        p@(Prop (Rel x') _) | x == x' ->
+          [ HH.div [] <$>
+              ( [ ( append
+                      <$> pure [ HH.div [ css do tell [ "padding-left: 0.5em" ] ] [ HH.text "•" ] ]
+                      <*> prop p
+                  ) >>= line
+                ] # sequence
+              )
+          ]
         _ -> []
     in
       if null m_props then pure none
@@ -52,7 +60,11 @@ stmt (DefRel x l) = do
             [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ]
           <$>
             ( [ punc "known instances:"
-              , pure [ HH.ul [] props ]
+              , pure
+                  [ HH.div
+                      [ css do tell [ "display: flex", "flex-direction: column", "gap: 0.5em" ] ]
+                      props
+                  ]
               ] # fold
             )
 

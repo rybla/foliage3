@@ -184,11 +184,11 @@
     };
   };
   var liftA1 = function(dictApplicative) {
-    var apply2 = apply(dictApplicative.Apply0());
+    var apply3 = apply(dictApplicative.Apply0());
     var pure18 = pure(dictApplicative);
     return function(f) {
       return function(a2) {
-        return apply2(pure18(f))(a2);
+        return apply3(pure18(f))(a2);
       };
     };
   };
@@ -1441,9 +1441,9 @@
     };
   };
   var applyWriterT = function(dictSemigroup) {
-    var append6 = append(dictSemigroup);
+    var append7 = append(dictSemigroup);
     return function(dictApply) {
-      var apply2 = apply(dictApply);
+      var apply3 = apply(dictApply);
       var Functor0 = dictApply.Functor0();
       var map30 = map(Functor0);
       var functorWriterT1 = functorWriterT(Functor0);
@@ -1452,10 +1452,10 @@
           return function(v1) {
             var k = function(v3) {
               return function(v4) {
-                return new Tuple(v3.value0(v4.value0), append6(v3.value1)(v4.value1));
+                return new Tuple(v3.value0(v4.value0), append7(v3.value1)(v4.value1));
               };
             };
-            return apply2(map30(k)(v))(v1);
+            return apply3(map30(k)(v))(v1);
           };
         },
         Functor0: function() {
@@ -1465,7 +1465,7 @@
     };
   };
   var bindWriterT = function(dictSemigroup) {
-    var append6 = append(dictSemigroup);
+    var append7 = append(dictSemigroup);
     var applyWriterT1 = applyWriterT(dictSemigroup);
     return function(dictBind) {
       var bind8 = bind(dictBind);
@@ -1478,7 +1478,7 @@
             return bind8(v)(function(v1) {
               var v2 = k(v1.value0);
               return map30(function(v3) {
-                return new Tuple(v3.value0, append6(v1.value1)(v3.value1));
+                return new Tuple(v3.value0, append7(v1.value1)(v3.value1));
               })(v2);
             });
           };
@@ -2777,13 +2777,13 @@
     };
   };
   var applyReaderT = function(dictApply) {
-    var apply2 = apply(dictApply);
+    var apply3 = apply(dictApply);
     var functorReaderT1 = functorReaderT(dictApply.Functor0());
     return {
       apply: function(v) {
         return function(v1) {
           return function(r) {
-            return apply2(v(r))(v1(r));
+            return apply3(v(r))(v1(r));
           };
         };
       },
@@ -3038,7 +3038,7 @@
   var intercalate = function(dictFoldable) {
     var foldl22 = foldl(dictFoldable);
     return function(dictMonoid) {
-      var append6 = append(dictMonoid.Semigroup0());
+      var append7 = append(dictMonoid.Semigroup0());
       var mempty3 = mempty(dictMonoid);
       return function(sep) {
         return function(xs) {
@@ -3053,7 +3053,7 @@
               ;
               return {
                 init: false,
-                acc: append6(v.acc)(append6(sep)(v1))
+                acc: append7(v.acc)(append7(sep)(v1))
               };
             };
           };
@@ -3116,12 +3116,12 @@
   var foldMapDefaultR = function(dictFoldable) {
     var foldr22 = foldr(dictFoldable);
     return function(dictMonoid) {
-      var append6 = append(dictMonoid.Semigroup0());
+      var append7 = append(dictMonoid.Semigroup0());
       var mempty3 = mempty(dictMonoid);
       return function(f) {
         return foldr22(function(x) {
           return function(acc) {
-            return append6(f(x))(acc);
+            return append7(f(x))(acc);
           };
         })(mempty3);
       };
@@ -3182,7 +3182,7 @@
         return xs.concat(ys);
       };
     }
-    return function(apply2) {
+    return function(apply3) {
       return function(map30) {
         return function(pure18) {
           return function(f) {
@@ -3194,12 +3194,12 @@
                   case 1:
                     return map30(array1)(f(array[bot]));
                   case 2:
-                    return apply2(map30(array2)(f(array[bot])))(f(array[bot + 1]));
+                    return apply3(map30(array2)(f(array[bot])))(f(array[bot + 1]));
                   case 3:
-                    return apply2(apply2(map30(array3)(f(array[bot])))(f(array[bot + 1])))(f(array[bot + 2]));
+                    return apply3(apply3(map30(array3)(f(array[bot])))(f(array[bot + 1])))(f(array[bot + 2]));
                   default:
                     var pivot = bot + Math.floor((top2 - bot) / 4) * 2;
-                    return apply2(map30(concat2)(go2(bot, pivot)))(go2(pivot, top2));
+                    return apply3(map30(concat2)(go2(bot, pivot)))(go2(pivot, top2));
                 }
               }
               return go2(0, array.length);
@@ -6777,7 +6777,7 @@
     traverse: function(dictApplicative) {
       var pure18 = pure(dictApplicative);
       var Apply0 = dictApplicative.Apply0();
-      var apply2 = apply(Apply0);
+      var apply3 = apply(Apply0);
       var map112 = map(Apply0.Functor0());
       return function(f) {
         var go2 = function(v) {
@@ -6786,7 +6786,7 @@
           }
           ;
           if (v instanceof Node) {
-            return apply2(apply2(map112(function(l$prime) {
+            return apply3(apply3(map112(function(l$prime) {
               return function(v$prime) {
                 return function(r$prime) {
                   return new Node(v.value0, v.value1, v.value2, v$prime, l$prime, r$prime);
@@ -6814,7 +6814,7 @@
     traverseWithIndex: function(dictApplicative) {
       var pure18 = pure(dictApplicative);
       var Apply0 = dictApplicative.Apply0();
-      var apply2 = apply(Apply0);
+      var apply3 = apply(Apply0);
       var map112 = map(Apply0.Functor0());
       return function(f) {
         var go2 = function(v) {
@@ -6823,7 +6823,7 @@
           }
           ;
           if (v instanceof Node) {
-            return apply2(apply2(map112(function(l$prime) {
+            return apply3(apply3(map112(function(l$prime) {
               return function(v$prime) {
                 return function(r$prime) {
                   return new Node(v.value0, v.value1, v.value2, v$prime, l$prime, r$prime);
@@ -7135,7 +7135,7 @@
     };
   };
   var goApply = function(dictApplicative) {
-    var apply2 = apply(dictApplicative.Apply0());
+    var apply3 = apply(dictApplicative.Apply0());
     return function(fStack) {
       return function(vals) {
         return function(gVal) {
@@ -7144,7 +7144,7 @@
           }
           ;
           if (fStack instanceof Cons) {
-            var gRes = apply2(fStack.value0.func)(gVal);
+            var gRes = apply3(fStack.value0.func)(gVal);
             var $31 = fStack.value0.count === 1;
             if ($31) {
               if (fStack.value1 instanceof Nil) {
@@ -8138,13 +8138,11 @@
   var element2 = /* @__PURE__ */ function() {
     return element(Nothing.value);
   }();
-  var li = /* @__PURE__ */ element2("li");
   var option = /* @__PURE__ */ element2("option");
   var select = /* @__PURE__ */ element2("select");
   var span2 = /* @__PURE__ */ element2("span");
   var sub2 = /* @__PURE__ */ element2("sub");
   var sub_ = /* @__PURE__ */ sub2([]);
-  var ul = /* @__PURE__ */ element2("ul");
   var div2 = /* @__PURE__ */ element2("div");
   var button = /* @__PURE__ */ element2("button");
 
@@ -9458,7 +9456,7 @@
     var bind8 = bind(bindReaderT(bindReaderT(bindStateT(monadExceptT2))));
     var ask3 = ask(monadAskReaderT(monadReaderT(monadStateT(monadExceptT2))));
     var pure18 = pure(applicativeReaderT(applicativeReaderT(applicativeStateT(monadExceptT2))));
-    var apply2 = apply(applyReaderT(applyReaderT(applyStateT(monadExceptT2))));
+    var apply3 = apply(applyReaderT(applyReaderT(applyStateT(monadExceptT2))));
     var map30 = map(functorReaderT(functorReaderT(functorStateT(functorExceptT(Monad0.Bind1().Apply0().Functor0())))));
     return function(v) {
       if (v instanceof VarTerm) {
@@ -9480,7 +9478,7 @@
       }
       ;
       if (v instanceof PairTerm) {
-        return apply2(map30(PairTerm.create)(subst_Term(dictMonadAff)(v.value0)))(subst_Term(dictMonadAff)(v.value1));
+        return apply3(map30(PairTerm.create)(subst_Term(dictMonadAff)(v.value0)))(subst_Term(dictMonadAff)(v.value1));
       }
       ;
       throw new Error("Failed pattern match at Foliage.Engine (line 233, column 1 - line 233, column 60): " + [v.constructor.name]);
@@ -10136,6 +10134,8 @@
   var ask2 = /* @__PURE__ */ ask(/* @__PURE__ */ monadAskReaderT(monadIdentity));
   var foldMap22 = /* @__PURE__ */ foldMap4(monoidArray);
   var eq4 = /* @__PURE__ */ eq(eqName);
+  var apply2 = /* @__PURE__ */ apply(/* @__PURE__ */ applyReaderT(applyIdentity));
+  var append6 = /* @__PURE__ */ append(semigroupArray);
   var $$null5 = /* @__PURE__ */ $$null(foldableArray);
   var none1 = /* @__PURE__ */ none(unfoldableMaybe);
   var map22 = /* @__PURE__ */ map(functorFn);
@@ -10154,10 +10154,10 @@
     })(v.body)])));
   };
   var span4 = /* @__PURE__ */ function() {
-    var $110 = pure(applicativeArray);
-    var $111 = span2([classes(["inline-kids"])]);
-    return function($112) {
-      return pure10($110($111($112)));
+    var $113 = pure(applicativeArray);
+    var $114 = span2([classes(["inline-kids"])]);
+    return function($115) {
+      return pure10($113($114($115)));
     };
   }();
   var punc = function(s) {
@@ -10203,7 +10203,7 @@
       return fold22([kw("Opposite"), punc("("), lat(v.value0), punc(")")]);
     }
     ;
-    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 118, column 1 - line 118, column 58): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 130, column 1 - line 130, column 58): " + [v.constructor.name]);
   };
   var term = function(v) {
     if (v instanceof VarTerm) {
@@ -10226,7 +10226,7 @@
       return fold22([punc("("), term(v.value0), punc(" , "), term(v.value1), punc(")")]);
     }
     ;
-    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 129, column 1 - line 129, column 60): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 141, column 1 - line 141, column 60): " + [v.constructor.name]);
   };
   var prop7 = function(v) {
     return fold22([rel(v.value0), punc("["), term(v.value1), punc("]")]);
@@ -10248,7 +10248,7 @@
       return fold22([punc("("), typ(v.value0), kw("\xD7"), typ(v.value1), punc(")")]);
     }
     ;
-    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 69, column 1 - line 69, column 58): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 81, column 1 - line 81, column 58): " + [v.constructor.name]);
   };
   var comp = function(v) {
     return fold22([name3(v.value0), punc("("), intercalate12(punc(","))(map110(term)(v.value1)), punc(")")]);
@@ -10266,7 +10266,7 @@
       return fold22([punc("if"), term(v.value0)]);
     }
     ;
-    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 104, column 1 - line 104, column 58): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Foliage.Ui.Grammar (line 116, column 1 - line 116, column 58): " + [v.constructor.name]);
   };
   var rule = function(v) {
     return map20(div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))]))(fold22([foldMap13(function(h) {
@@ -10280,18 +10280,18 @@
           return bind4(function() {
             var m_props = foldMap22(function(v1) {
               if (eq4(v.value0)(v1.value0)) {
-                return [map20(li([]))(sequence2([bind4(prop7(v1))(line)]))];
+                return [map20(div2([]))(sequence2([bind4(apply2(map20(append6)(pure10([div2([css(tell3(["padding-left: 0.5em"]))])([text("\u2022")])])))(prop7(v1)))(line)]))];
               }
               ;
               return [];
             })(ctx.props);
-            var $97 = $$null5(m_props);
-            if ($97) {
+            var $100 = $$null5(m_props);
+            if ($100) {
               return pure10(none1);
             }
             ;
             return bind4(sequence2(m_props))(function(props) {
-              return map20(map22(pure1)(div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))])))(fold22([punc("known instances:"), pure10([ul([])(props)])]));
+              return map20(map22(pure1)(div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))])))(fold22([punc("known instances:"), pure10([div2([css(tell3(["display: flex", "flex-direction: column", "gap: 0.5em"]))])(props)])]));
             });
           }())(function(body2) {
             return stmt_template({
