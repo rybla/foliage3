@@ -135,7 +135,7 @@ loop = do
 
 applyRule :: forall m. MonadAff m => Rule -> ReaderT (List Prop) (M m) (List Prop)
 applyRule (Rule rule) = do
-  lift $ trace "applyRule" $ HH.text $ pretty (Rule rule)
+  lift $ trace "applyRule" $ HH.text $ "try " <> pretty (Rule rule)
   case rule.hyps of
     Nil -> pure $ singleton rule.prop
     Cons (PropHyp hyp) hyps -> do
