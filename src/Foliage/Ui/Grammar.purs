@@ -37,7 +37,7 @@ prog (Prog stmts) =
 stmt :: forall m as. Stmt -> Reader Ctx (HTML m as)
 stmt (DefRel x l) = do
   ctx <- ask
-  label <- [ punc "relation", name x, punc "[", lat l, punc "]" ] # fold # bind' line
+  label <- [ punc "relation", name x, lat l ] # fold # bind' line
   body <-
     let
       m_props = ctx.props # foldMap case _ of
@@ -122,7 +122,7 @@ comp :: forall m as. Comp -> Reader Ctx (Array (HTML m as))
 comp (Invoke x args) = [ name x, punc "(", args # map term # intercalate (punc ","), punc ")" ] # fold
 
 prop :: forall m as. Prop -> Reader Ctx (Array (HTML m as))
-prop (Prop r a) = [ rel r, punc "[", term a, punc "]" ] # fold
+prop (Prop r a) = [ rel r, term a ] # fold
 
 rel :: forall m as. Rel -> Reader Ctx (Array (HTML m as))
 rel (Rel x) = name x

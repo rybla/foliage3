@@ -44,7 +44,7 @@ instance Show Stmt where
   show (DefFun x ps t _) = "DefFun " <> show x <> " " <> show ps <> " " <> show t <> " " <> "<fun>"
 
 instance Pretty Stmt where
-  pretty (DefRel x l) = "relation " <> pretty x <> " " <> brackets (pretty l)
+  pretty (DefRel x l) = "relation " <> pretty x <> " " <> pretty l
   pretty (DefRule x r) = "rule " <> pretty x <> " := " <> pretty r
   pretty (DefFun x ps t _) = "fun " <> pretty x <> parens (ps # map (\(x' /\ t') -> pretty x' <> " : " <> pretty t') # intercalate ", ") <> " -> " <> pretty t <> " := " <> "<fun>"
 
@@ -95,6 +95,11 @@ instance Pretty Term where
 
 instance Eq Term where
   eq x y = genericEq x y
+
+vars_Term :: Term -> Set Name
+vars_Term (VarTerm x) = Set.singleton x
+vars_Term (DataTerm _) = Set.empty
+vars_Term (PairTerm a b) = Set.union (vars_Term a) (vars_Term b)
 
 data DataTerm
   = UnitTerm
@@ -192,7 +197,7 @@ instance Show Prop where
   show x = genericShow x
 
 instance Pretty Prop where
-  pretty (Prop r a) = pretty r <> " " <> brackets (pretty a)
+  pretty (Prop r a) = pretty r <> " " <> pretty a
 
 instance Eq Prop where
   eq x y = genericEq x y

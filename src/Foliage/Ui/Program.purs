@@ -68,7 +68,8 @@ component = H.mkComponent { initialState, eval, render }
     , prog: example_progs # Array.find (fst >>> (_ == initial_example_name)) # maybe' impossible snd
     , props: none
     , initial_gas: 10
-    , delay_duration: 800.0 # wrap
+    -- , delay_duration: 800.0 # wrap
+    , delay_duration: 0.0 # wrap
     , status: inj @"ready" unit
     , result: none
     , stopped: false
